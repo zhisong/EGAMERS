@@ -1,0 +1,10 @@
+Python Scripts
+
+IMODE = 1 (eigenvalue solver)
+field.py   -   plot E_r versus radius
+fqc.py     -   plot continuum frequencies versus radius and global mode frequencies
+
+IMODE = 2 (bounce frequency map)
+
+IMODE = 3 (orbit)
+orbit.py   -   plot particle drift orbit
