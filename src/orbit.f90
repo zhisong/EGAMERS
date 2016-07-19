@@ -39,8 +39,6 @@ contains
 
     ! find the start point
     rstart = findrstart(ee, mub0, pphi, vsignin)
-!!$    write(*,*) rstart
-
     ! if the start point is outside the plasma, return "lost"
     if (rstart .gt. rlost) then
        istatus = 2
@@ -101,7 +99,7 @@ contains
           exit
        else if ((ttemp(i) +  pi) * (ttemp(i+1) +  pi) .le. 0) then
           ! orbit is closed
-          ttarget = - 2 * pi
+          ttarget = - pi
           istatus = 1
           ! terminate loop
           exit
@@ -144,7 +142,6 @@ contains
        end do
     end if
     period = (real(i-1) * dt + dtlast)
-
     ! put orbit data on equal-distant t/T grid (action-angle)
     do j = 1, norbit / 2 + 1
        ! new grid point
@@ -354,10 +351,14 @@ contains
        ! must be co-passing / trapped, search from r(pphi) to 1 
        r1 = psitor(- pphi / ei)
        r2 = rlost
-    else
-       ! mush be ct-passing, search from 0 to r(pphi)
+    else if (pphi .ge. -psi1 * ei) then
+       ! must be ct-passing, search from 0 to r(pphi)
        r1 = 0
        r2 = psitor(- pphi / ei)
+    else
+       ! must be ct-passing, search from 0 to 1
+       r1 = 0
+       r2 = rlost
     end if
     ee1 = getee(mub0, pphi, r1)
     ee2 = getee(mub0, pphi, r2)

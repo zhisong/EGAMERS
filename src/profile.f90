@@ -89,6 +89,8 @@ module profile
       end do
 
       call spline_build(psir, 0., 0., 2, 1, psir%n)
+
+      psi1 = psir%y(psir%n)
          
     end subroutine profile_init
 

@@ -7,12 +7,12 @@
  IMODE           = 3,
  NEIGEN          = 1,
  OMEGAIN(1)      = (244760.542334162, 27653.8481392209),
- VSIGN_IN        = 1,
- ENERGY_IN       = 100.,
- MUB0_IN         = 100.,
- PPHI_IN         = -0.5,
- IENERGY_TPBOUND = -1,
- ENERGY_LOG_IN   = 100.,
+ VSIGN_IN        = -1,
+ ENERGY_IN       = 75.,
+ MUB0_IN         = 37.5,
+ PPHI_IN         = -0.78,
+ IENERGY_TPBOUND = 0,
+ ENERGY_LOG_IN   = 20.,
  
 &END
 
@@ -46,16 +46,20 @@
 
 ! PHYSICS AND GEOMETRY NAMELIST
 &PHYS
- AF = 1.0,
+ AF = 2.0,
  ZF = 1.0,
  AI = 2.0,
- R0 = 3.0,
- A  = 1.0,
- B0 = 3.5,
+ R0 = 1.7,
+ A  = 0.51,
+ B0 = 2.,
 &END
 
 ! BULK ION PROFILES
 &PROF
+IQ_TYPE = 1,
+QPOLY(1) = 3.,
+QPOLY(2) = 0.,
+QPOLY(3) = 0.,
 &END
 
 ! FAST ION DISTRIBUTION FUNCTION
