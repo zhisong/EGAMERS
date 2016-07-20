@@ -31,7 +31,7 @@ contains
     real, dimension(nmaxts) :: rtemp, ttemp ! temp orbit data
     real, dimension(100) :: rsmall, tsmall
     integer :: vsign
-    real :: rstart
+    real :: rstart, tstart
     real :: newr, newtheta, dt, dtlast, dttemp, yout, ylast
     real :: ttarget, curtime, timediff
     integer :: i, j, ipos, flagtrapped
@@ -39,6 +39,16 @@ contains
 
     ! find the start point
     rstart = findrstart(ee, mub0, pphi, vsignin)
+
+    if ((rstart .lt. 0.) .and. (rstart .gt. 1.)) then
+       ! start from the high field side
+       tstart = pi
+       rstart = abs(rstart)
+    else
+       ! start from the low field side
+       tstart = 0.
+    end if
+
     ! if the start point is outside the plasma, return "lost"
     if (rstart .gt. rlost) then
        istatus = 2
@@ -334,6 +344,7 @@ contains
     use paras_phy
     use paras_num
     use profile
+    use orbit_classify, only : copassingedge
     implicit none
 
     real, intent(in) :: ee, mub0, pphi
@@ -343,6 +354,7 @@ contains
     real :: r3, r4, f3, f4, fmid
     integer :: i, ifound
 
+    ! default, start searching from the low field side (r>0)
     if (pphi .ge. 0) then
        ! must be co-passing, search from 0 to 1 
        r1 = 0
@@ -351,17 +363,36 @@ contains
        ! must be co-passing / trapped, search from r(pphi) to 1 
        r1 = psitor(- pphi / ei)
        r2 = rlost
-    else if (pphi .ge. -psi1 * ei) then
-       ! must be ct-passing, search from 0 to r(pphi)
-       r1 = 0
-       r2 = psitor(- pphi / ei)
-    else
-       ! must be ct-passing, search from 0 to 1
-       r1 = 0
-       r2 = rlost
+    else 
+       if (pphi .ge. -psi1 * ei) then
+          ! must be ct-passing / trapped, search from 0 to r(pphi)
+          if (ee .ge. copassingedge(mub0, pphi)) then
+             ! start searching from the high field side
+             r1 =  -psitor(- pphi / ei)
+             r2 = 0.
+          else
+             ! start searching from the low field side
+             r1 = 0.
+             r2 = psitor(-pphi / ei)
+          end if
+       else
+          ! must be ct-passing / trapped, search from 0 to 1
+          if (ee .ge. copassingedge(mub0, pphi)) then
+             ! start searching from the high field side
+             r1 = -rlost
+             r2 =  0.
+          else
+             ! start searching from the low field side
+             r1 = 0.
+             r2 = rlost
+          end if
+       end if
     end if
+
     ee1 = getee(mub0, pphi, r1)
     ee2 = getee(mub0, pphi, r2)
+
+    write(*,*) r1, r2, ee1/1000./ei, ee2/1000./ei
 
     i = 0
     ifound = 0
@@ -372,7 +403,8 @@ contains
        r4 = r2
        f3 = getprime(mub0, pphi ,r3)
        f4 = getprime(mub0, pphi, r4)
-       
+
+       write(*,*) r3, r4, f3, f4
        
        do while ((ifound .eq. 0) .and. (i .le. maxitrstart))
           rmid = (r3 + r4) / 2.
@@ -385,6 +417,7 @@ contains
           end if
 
           fmid = getprime(mub0, pphi, rmid)
+          !write(*,*) rmid, eetemp/ei/1000., fmid
           if (fmid * f3 .le. 0) then
              r4 = rmid
              f4 = fmid
@@ -444,7 +477,7 @@ contains
        findrstart = rmid
     else
        ! not found
-       findrstart = -1.
+       findrstart = -2.
     end if
 
   end function findrstart
@@ -461,7 +494,7 @@ contains
     real :: mub, vpar
 
     mub = mub0 * (1. - eps * rtry)
-    vpar= (pphi + ei * psi(rtry)) / mi / R0 / (1. + eps * rtry)
+    vpar= (pphi + ei * psi(abs(rtry))) / mi / R0 / (1. + eps * rtry)
     getee = 0.5 * mi * vpar**2 + mub
 
   end function getee
@@ -478,9 +511,11 @@ contains
 
     rbar = (1 + eps * rtry)
 
-    getprime = (pphi + ei * psi(rtry)) * rtry * ei * B0 / q(rtry) / R0**2 / rbar**2 
-    getprime = getprime -  eps * (pphi + ei * psi(rtry))**2 / R0**2 / rbar**3
-    getprime = getprime / mi - mub0 * eps
+    getprime = (pphi + ei * psi(abs(rtry))) * rtry * ei * B0 &
+         / q(abs(rtry)) / rbar**2 
+    getprime = getprime -  eps * (pphi + ei * psi(abs(rtry)))**2 &
+         / rbar**3
+    getprime = getprime / mi / R0**2 - mub0 * eps
 
   end function getprime
 
