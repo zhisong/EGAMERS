@@ -40,7 +40,16 @@ contains
     ! find the start point
     rstart = findrstart(ee, mub0, pphi, vsignin)
 
-    if ((rstart .lt. 0.) .and. (rstart .gt. 1.)) then
+    ! check if the orbit exists
+    if ((rstart .le. -rlost) .or. (ee .le. mub0 * (1-eps*rstart))) then
+       ! energy must be greater than mub0 * (1 - r/R0)
+       istatus = -100
+       write(*,*) 'ERROR: orbit does not exist at (e,mub0,r) = ', &
+            ee/eunit, mub0/eunit,rstart
+       return
+    end if
+
+    if (rstart .lt. 0.) then
        ! start from the high field side
        tstart = pi
        rstart = abs(rstart)
@@ -55,19 +64,11 @@ contains
        return 
     end if
 
-    ! check if the orbit exists
-    if (ee .le. mub0 * (1-eps*rstart)) then
-       ! energy must be greater than mub0 * (1 - r/R0)
-       istatus = -100
-       write(*,*) 'ERROR: orbit does not exist at (e,mub0,r) = ', ee/eunit, mub0/eunit,rstart
-       return
-    end if
-
     ! time step = orbit_dt * cycotron period
     dt = orbit_dt * Tc
     ! start point : high field side on mid-plane
     rtemp(1) = rstart
-    ttemp(1) = 0.
+    ttemp(1) = tstart
     vsign = vsignin
     flagtrapped = 0
 
@@ -101,13 +102,13 @@ contains
           istatus = 1
           ! terminate loop
           exit
-       else if ((ttemp(i) -  pi) * (ttemp(i+1) -  pi) .le. 0) then
+       else if ((ttemp(i) -  pi) * (ttemp(i+1) -  pi) .lt. 0) then
           ! orbit is closed
           ttarget =  pi
           istatus = 1
           ! terminate loop
           exit
-       else if ((ttemp(i) +  pi) * (ttemp(i+1) +  pi) .le. 0) then
+       else if ((ttemp(i) +  pi) * (ttemp(i+1) +  pi) .lt. 0) then
           ! orbit is closed
           ttarget = - pi
           istatus = 1
