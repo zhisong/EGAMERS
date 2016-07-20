@@ -10,7 +10,7 @@
  VSIGN_IN        = -1,
  ENERGY_IN       = 75.,
  MUB0_IN         = 37.5,
- PPHI_IN         = -0.77,
+ PPHI_IN         = -0.75,
  IENERGY_TPBOUND = 0,
  ENERGY_LOG_IN   = 20.,
  

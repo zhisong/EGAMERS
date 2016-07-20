@@ -255,7 +255,7 @@ contains
     rdtheta = rdthetadt(ee, mub0, pphi, newr, newtheta)
     k2x = dr * cos(newtheta) - sin(newtheta)*rdtheta
     k2y = dr * sin(newtheta) + cos(newtheta)*rdtheta
-    
+
     newx = xin + k2x * dt / 2.
     newy = yin + k2y * dt / 2.
     newr = sqrt(newx**2 + newy**2)
@@ -270,7 +270,7 @@ contains
     rdtheta = rdthetadt(ee, mub0, pphi, newr, newtheta)
     k3x = dr * cos(newtheta) - sin(newtheta)*rdtheta
     k3y = dr * sin(newtheta) + cos(newtheta)*rdtheta
-    
+
     newx = xin + k3x * dt
     newy = yin + k3y * dt
     newr = sqrt(newx**2 + newy**2)
@@ -285,11 +285,11 @@ contains
     rdtheta = rdthetadt(ee, mub0, pphi, newr, newtheta)
     k4x = dr * cos(newtheta) - sin(newtheta)*rdtheta
     k4y = dr * sin(newtheta) + cos(newtheta)*rdtheta
-    
+
     ! evolve the current time step and proceed
     newx = xin + dt/6.*(k1x + 2.*k2x + 2.*k3x + k4x)
     newy = yin + dt/6.*(k1y + 2.*k2y + 2.*k3y + k4y)
-    
+
     rout = sqrt(newx**2 + newy**2)
     thetaout = atan2(newy, newx)
     if (rout .le. 1e-10) then
@@ -389,90 +389,113 @@ contains
        end if
     end if
 
-    ee1 = getee(mub0, pphi, r1)
-    ee2 = getee(mub0, pphi, r2)
-
-    write(*,*) r1, r2, ee1/1000./ei, ee2/1000./ei
-
     i = 0
     ifound = 0
-    if ((ee1 - ee) * (ee2 - ee) .ge. 0) then
-       ! need to find another search start point
-       ! binary search for the min, or until getee < 0
-       r3 = r1
-       r4 = r2
-       f3 = getprime(mub0, pphi ,r3)
-       f4 = getprime(mub0, pphi, r4)
 
-       write(*,*) r3, r4, f3, f4
-       
+    if (r1 .le. 0.) then
+       ! high field side, use a Newton's method
+       r3 = 0.
+       eetemp = getee(mub0, pphi, r3)
        do while ((ifound .eq. 0) .and. (i .le. maxitrstart))
-          rmid = (r3 + r4) / 2.
-          eetemp = getee(mub0,pphi,rmid)
-          if ((eetemp-ee) * (ee2-ee) .lt. 0) then
-             ! a new start point is found
+          f3 = getprime(mub0, pphi, r3)
+          r4 = r3 - (eetemp - ee) / f3
+          if (r4 .le. r1) then
+             r4 = r1 / 2.
+          end if
+
+          r3 = r4
+          eetemp = getee(mub0, pphi, r3)
+
+          if (abs(eetemp - ee) / ee .le. errrstartmin) then
              ifound = 1
-             r1 = rmid
-             exit 
+             exit
           end if
 
-          fmid = getprime(mub0, pphi, rmid)
-          !write(*,*) rmid, eetemp/ei/1000., fmid
-          if (fmid * f3 .le. 0) then
-             r4 = rmid
-             f4 = fmid
+          i = i + 1
+       end do
+
+       rmid = r3
+       
+    else
+       ee1 = getee(mub0, pphi, r1)
+       ee2 = getee(mub0, pphi, r2)
+
+       if ((ee1 - ee) * (ee2 - ee) .ge. 0) then
+          ! need to find another search start point
+          ! binary search for the min, or until getee < 0
+          r3 = r1
+          r4 = r2
+          f3 = getprime(mub0, pphi, r3)
+          f4 = getprime(mub0, pphi, r4)
+
+          do while ((ifound .eq. 0) .and. (i .le. maxitrstart))
+             rmid = (r3 + r4) / 2.
+             eetemp = getee(mub0,pphi,rmid)
+             if ((eetemp-ee) * (ee2-ee) .lt. 0) then
+                ! a new start point is found
+                ifound = 1
+                r1 = rmid
+                exit 
+             end if
+
+             fmid = getprime(mub0, pphi, rmid)
+             if (fmid * f3 .le. 0) then
+                r4 = rmid
+                f4 = fmid
+             else
+                r3 = rmid
+                f3 = fmid
+             end if
+
+             if (abs(fmid / ee) .le. errrstart) then
+                ifound = 2
+             end if
+             i = i + 1
+          end do
+
+          ! check if the minimum is the solution
+          eetemp = getee(mub0,pphi,rmid)
+          if (abs(eetemp - ee) / ee .le. errrstartmin) then
+             ifound = 1
           else
-             r3 = rmid
-             f3 = fmid
+             if (ifound .eq. 1) then
+                ifound = 0
+                i = 0
+                ee1 = getee(mub0,pphi,r1)
+             else
+                ! not found
+                ifound = 0
+                i = maxitrstart
+             end if
+          end if
+       else
+          i = 0
+          ifound = 0
+       end if
+
+
+       ! binary search
+
+       do while ((ifound .eq. 0) .and. (i .le. maxitrstart))
+          rmid = (r1 + r2) / 2.
+          eetemp = getee(mub0, pphi, rmid)
+          if ((eetemp - ee) * (ee1 - ee) .le. 0) then
+             r2 = rmid
+             ee2 = eetemp
+          else
+             r1 = rmid
+             ee1 = eetemp
           end if
 
-          if (abs(fmid / ee) .le. errrstart) then
-             ifound = 2
+          if (abs(eetemp - ee)/ee .le. errrstart) then
+             ifound = 1
+             exit
           end if
           i = i + 1
        end do
 
-       ! check if the minimum is the solution
-       eetemp = getee(mub0,pphi,rmid)
-       if (abs(eetemp - ee) / ee .le. errrstartmin) then
-          ifound = 1
-       else
-          if (ifound .eq. 1) then
-             ifound = 0
-             i = 0
-             ee1 = getee(mub0,pphi,r1)
-          else
-             ! not found
-             ifound = 0
-             i = maxitrstart
-          end if
-       end if
-    else
-       i = 0
-       ifound = 0
     end if
-
-
-    ! binary search
     
-    do while ((ifound .eq. 0) .and. (i .le. maxitrstart))
-       rmid = (r1 + r2) / 2.
-       eetemp = getee(mub0, pphi, rmid)
-       if ((eetemp - ee) * (ee1 - ee) .le. 0) then
-          r2 = rmid
-          ee2 = eetemp
-       else
-          r1 = rmid
-          ee1 = eetemp
-       end if
-
-       if (abs(eetemp - ee)/ee .le. errrstart) then
-          ifound = 1
-          exit
-       end if
-       i = i + 1
-    end do
-
     if (ifound .gt. 0) then
        findrstart = rmid
     else
@@ -511,7 +534,7 @@ contains
 
     rbar = (1 + eps * rtry)
 
-    getprime = (pphi + ei * psi(abs(rtry))) * rtry * ei * B0 &
+    getprime = 2. * (pphi + ei * psi(abs(rtry))) * rtry * ei * B0 &
          / q(abs(rtry)) / rbar**2 
     getprime = getprime -  eps * (pphi + ei * psi(abs(rtry)))**2 &
          / rbar**3
