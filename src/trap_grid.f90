@@ -315,7 +315,7 @@ contains
        trapedgetmp = trapedge(mub0, sgrid(ds * real(i1)), istat)
        if (i1 .ge. npphin) exit
     end do
-
+    
     ! left boundary, crossing of lost boundary and trap edge
     trapedgetmp = trapedge(mub0, sgrid(ds * real(i2)), istat)
     do while ((trapedgetmp .ge. traplost(mub0,  sgrid(ds * real(i2)))) .or. (istat .ne. 1))
@@ -345,12 +345,14 @@ contains
 
           ! calculate the t/p boundary
           this%etpbound(i3) = tpbound(mub0, this%pphigrid(i3), istat)
+
           if (istat .eq. 2) then
              ! TYPE II t/p boundary found
              ! no special treatment for the t/p boundary
              this%ibstart = ipos
           end if
           ! calculate the lowest energy of trapped particles
+
           this%etrapedge(i3) = trapedge(mub0, this%pphigrid(i3), istat)
           if (istat .ne. 1) then
              write(*,*) 'error when calculating trap edge'
@@ -389,7 +391,6 @@ contains
        allocate(this%ielementmaxb(this%neeb, this%npphib))
 
        this%np = np
-
        ! fill in energy grid
        do i3 = 1, this%npphin
           ! initiate the spline object

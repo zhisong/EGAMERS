@@ -190,7 +190,7 @@ contains
           p2 = xc(1)
        end if
 
-       if (((this%y(i1) - yin) * (this%y(i1+1) - yin) .lt. 0.) &
+       if (((this%y(i1) - yin) * (this%y(i1+1) - yin) .le. 0.) &
             .or. (p1 * p2 .le. 0.)) then
           ! 1. y(i1) and y(i1+1) are on different sides of yin
           !    there must be at least one root inside
@@ -206,10 +206,10 @@ contains
           b = this%b(i1) / this%d(i1)
           c = (this%a(i1) - yin) / this%d(i1)
           call cubicroot(a, b, c, nc, xc)
-          ! check if xleft <= x < xright
+          ! check if xleft <= x <= xright
           ! if yes, add to the output list
           do i2 = 1, nc
-             if ((xc(i2) .ge. 0) .and. (xc(i2) .lt. xr - xl)) then
+             if ((xc(i2) .ge. 0.) .and. (xc(i2) .lt. xr - xl)) then
                 nfound = nfound + 1
                 xlist(nfound) = xc(i2) + xl
              else if ((i1 .eq. iend-1) .and. (xc(i2) .eq. xr - xl)) then

@@ -8,6 +8,7 @@ program EGAMERS
 !!$  use profile, only : psi1
   use profile
   use orbit, only : getorbit
+  use nl
   use io
   use sintable
   use radial_grid

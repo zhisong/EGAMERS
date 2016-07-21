@@ -22,13 +22,13 @@ module profile
   !               == 3, input on grid points (not implemented)
 
   ! polynomial te profile, normalized to on axis (5th order)
-  real, dimension(6) :: tepoly = (/1.,0.,-1.,0.,0.,0./)
+  real, dimension(6) :: tepoly = (/1.,0.,0.,0.,0.,0./)
   ! polynomial ti profile, normalized to on axis (5th order)
-  real, dimension(6) :: tipoly = (/1.,0.,-1.,0.,0.,0./)
+  real, dimension(6) :: tipoly = (/1.,0.,0.,0.,0.,0./)
   ! polynomial ni profile, normalized to on axis (5th order)
-  real, dimension(6) :: nipoly = (/1.,0.,-1.,0.,0.,0./)
+  real, dimension(6) :: nipoly = (/1.,0.,0.,0.,0.,0./)
   ! polynomial q profile
-  real, dimension(6) :: qpoly = (/2.,0.,2.,0.,0.,0./)
+  real, dimension(6) :: qpoly = (/2.,0.,0.,0.,0.,0./)
 
   ! Gaussian te, ti, ni profile, profile width
   real :: te_deltar = 0.5
