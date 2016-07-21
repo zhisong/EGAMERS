@@ -44,8 +44,8 @@ contains
     if ((rstart .le. -rlost) .or. (ee .le. mub0 * (1-eps*rstart))) then
        ! energy must be greater than mub0 * (1 - r/R0)
        istatus = -100
-       write(*,*) 'ERROR: orbit does not exist at (e,mub0,r) = ', &
-            ee/eunit, mub0/eunit,rstart
+       write(*,*) 'ERROR: orbit does not exist at (mub0,E,pphi/e psi1) = ', &
+            mub0/1000./eunit, ee/1000./eunit, pphi/ei/psi1
        return
     end if
 
@@ -393,17 +393,13 @@ contains
     i = 0
     ifound = 0
 
-    if (r1 .le. 0.) then
+    if (r1 .lt. 0.) then
        ! high field side, use a Newton's method
        r3 = 0.
        eetemp = getee(mub0, pphi, r3)
        do while ((ifound .eq. 0) .and. (i .le. maxitrstart))
           f3 = getprime(mub0, pphi, r3)
           r4 = r3 - (eetemp - ee) / f3
-          if (r4 .le. r1) then
-             r4 = r1 / 2.
-          end if
-
           r3 = r4
           eetemp = getee(mub0, pphi, r3)
 
@@ -432,6 +428,7 @@ contains
           do while ((ifound .eq. 0) .and. (i .le. maxitrstart))
              rmid = (r3 + r4) / 2.
              eetemp = getee(mub0,pphi,rmid)
+  
              if ((eetemp-ee) * (ee2-ee) .lt. 0) then
                 ! a new start point is found
                 ifound = 1
@@ -440,6 +437,7 @@ contains
              end if
 
              fmid = getprime(mub0, pphi, rmid)
+             
              if (fmid * f3 .le. 0) then
                 r4 = rmid
                 f4 = fmid
@@ -480,6 +478,7 @@ contains
        do while ((ifound .eq. 0) .and. (i .le. maxitrstart))
           rmid = (r1 + r2) / 2.
           eetemp = getee(mub0, pphi, rmid)
+ 
           if ((eetemp - ee) * (ee1 - ee) .le. 0) then
              r2 = rmid
              ee2 = eetemp
@@ -496,7 +495,7 @@ contains
        end do
 
     end if
-    
+
     if (ifound .gt. 0) then
        findrstart = rmid
     else
@@ -535,11 +534,11 @@ contains
 
     rbar = (1 + eps * rtry)
 
-    getprime = 2. * (pphi + ei * psi(abs(rtry))) * rtry * ei * B0 &
+    getprime = 2.* (pphi + ei * psi(abs(rtry))) * a**2 * rtry * ei * B0 &
          / q(abs(rtry)) / rbar**2 
-    getprime = getprime -  eps * (pphi + ei * psi(abs(rtry)))**2 &
+    getprime = getprime - 2. * eps * (pphi + ei * psi(abs(rtry)))**2 &
          / rbar**3
-    getprime = getprime / mi / R0**2 - mub0 * eps
+    getprime = 0.5 * getprime / mi / R0**2 - mub0 * eps
 
   end function getprime
 

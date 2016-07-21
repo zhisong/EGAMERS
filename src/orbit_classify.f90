@@ -136,95 +136,95 @@ contains
 
   end function tpbound
 
-  real function trapedge(mub0, pphi, istat)
-    ! find the lowest energy limit for trapped particles
-    ! istat : success(1), error(-1)
-    use paras_phy
-    use profile
-    implicit none
-
-    real, intent(in) :: mub0, pphi
-    integer, intent(out) :: istat
-
-    real :: r1
-    
-    if ((pphi .le. -ei * psi(1.)) .or. (pphi .ge. 0.)) then
-       ! no trapped particles for P_phi > 0 and P_pphi < -e psi(1)
-       trapedge = -1.
-       istat = 0
-       return
-    end if
-
-    trapedge = mub0 * (1. - eps * psitor(-pphi/ei))
-    istat = 1
-  end function trapedge
-
 !!$  real function trapedge(mub0, pphi, istat)
-!!$    ! find the lowest energy limit for co-passing stagnation paticles
-!!$    ! istat : success(1), none(0), error(-1)
+!!$    ! find the lowest energy limit for trapped particles
+!!$    ! istat : success(1), error(-1)
 !!$    use paras_phy
-!!$    use paras_num
 !!$    use profile
 !!$    implicit none
 !!$
 !!$    real, intent(in) :: mub0, pphi
 !!$    integer, intent(out) :: istat
 !!$
-!!$    real :: r1, r2, psi11, det, vpar, f1, ddr
-!!$    integer :: flagnotfound, i
-!!$
-!!$    if ((pphi .le. -ei * psi(1.))) then
-!!$       ! no  particles  P_pphi < -e psi(1)
+!!$    real :: r1
+!!$    
+!!$    if ((pphi .le. -ei * psi(1.)) .or. (pphi .ge. 0.)) then
+!!$       ! no trapped particles for P_phi > 0 and P_pphi < -e psi(1)
 !!$       trapedge = -1.
 !!$       istat = 0
 !!$       return
 !!$    end if
 !!$
-!!$    ! initial guess : v_\parallel = 0
-!!$    r1 = psitor(-pphi / ei)
-!!$    r1 = 1.
-!!$    flagnotfound = 0
-!!$    i = 0
-!!$    ! Newton's methods
-!!$    do while ((flagnotfound .eq. 0) .and. (i .le. maxittpbound))
-!!$       f1 = fbry(r1, 1., mub0, pphi)
-!!$       det = dfbrydr(r1, 1., mub0, pphi)
-!!$       if (det .eq. 0.) then
-!!$          ! matrix singluar, search failed
-!!$          exit
-!!$       end if
-!!$       ddr = f1 / det
-!!$       r2 = r1 - ddr
-!!$
-!!$       if ((r2 .gt. 1.) .or. (r2 .le. 0.)) then
-!!$          ! search failed
-!!$          trapedge = -1
-!!$          istat = -1
-!!$          return
-!!$       end if
-!!$    
-!!$       if (abs(ddr/r2) .le. errtpbound) then
-!!$          ! the boundary is found
-!!$          flagnotfound = 1
-!!$       end if
-!!$       r1 = r2
-!!$       i = i + 1
-!!$    end do
-!!$    if (flagnotfound .eq. 0) then
-!!$       ! boundary not found
-!!$       trapedge = -1.
-!!$       istat = -1
-!!$       return
-!!$    end if
-!!$
-!!$    psi11 = psi(r2)
-!!$    vpar = (pphi + ei * psi11) / mi / R0 / (1 + eps * r2)
-!!$    trapedge = 0.5 * mi * vpar**2 + mub0 * (1 - eps * r2)
+!!$    trapedge = mub0 * (1. - eps * psitor(-pphi/ei))
 !!$    istat = 1
-!!$    
-!!$    ! slightly raise the energy to prevent ill-behaviour in numerics
-!!$    trapedge = trapedge * (1 + 1.e-3)
 !!$  end function trapedge
+
+  real function trapedge(mub0, pphi, istat)
+    ! find the lowest energy limit for co-passing stagnation paticles
+    ! istat : success(1), none(0), error(-1)
+    use paras_phy
+    use paras_num
+    use profile
+    implicit none
+
+    real, intent(in) :: mub0, pphi
+    integer, intent(out) :: istat
+
+    real :: r1, r2, psi11, det, vpar, f1, ddr
+    integer :: flagnotfound, i
+
+    if ((pphi .le. -ei * psi(1.))) then
+       ! no  particles  P_pphi < -e psi(1)
+       trapedge = -1.
+       istat = 0
+       return
+    end if
+
+    ! initial guess : v_\parallel = 0
+!    r1 = psitor(-pphi / ei)
+    r1 = 1.
+    flagnotfound = 0
+    i = 0
+    ! Newton's methods
+    do while ((flagnotfound .eq. 0) .and. (i .le. maxittpbound))
+       f1 = fbry(r1, 1., mub0, pphi)
+       det = dfbrydr(r1, 1., mub0, pphi)
+       if (det .eq. 0.) then
+          ! matrix singluar, search failed
+          exit
+       end if
+       ddr = f1 / det
+       r2 = r1 - ddr
+
+       if ((r2 .gt. 1.) .or. (r2 .le. 0.)) then
+          ! search failed
+          trapedge = -1
+          istat = -1
+          return
+       end if
+    
+       if (abs(ddr/r2) .le. errtpbound) then
+          ! the boundary is found
+          flagnotfound = 1
+       end if
+       r1 = r2
+       i = i + 1
+    end do
+    if (flagnotfound .eq. 0) then
+       ! boundary not found
+       trapedge = -1.
+       istat = -1
+       return
+    end if
+
+    psi11 = psi(r2)
+    vpar = (pphi + ei * psi11) / mi / R0 / (1 + eps * r2)
+    trapedge = 0.5 * mi * vpar**2 + mub0 * (1 - eps * r2)
+    istat = 1
+    
+    ! slightly raise the energy to prevent ill-behaviour in numerics
+    trapedge = trapedge * (1 )
+  end function trapedge
 
   real function traplost(mub0, pphi)
     ! find the trapped-confined/trapped-lost boundary

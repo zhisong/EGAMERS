@@ -15,7 +15,7 @@ program EGAMERS
   use trap_matrix
   use trap_grid
   use eigen
-  use orbit_classify, only : tpbound
+  use orbit_classify, only : tpbound, trapedge
   implicit none
 
   integer, parameter :: nmax = 2000
@@ -100,6 +100,7 @@ program EGAMERS
         if (pphi_in .ge. -1. .and. pphi_in .le. 0.) then
            write(*,*) 'Orbit close to t/p boundary'
            eetpbound = tpbound(mub0, pphi, ierr)
+           
            if (ierr .le. 0) then
               write(*,*) 'Finding t/p boundary failed'
               stop

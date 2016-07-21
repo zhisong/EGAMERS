@@ -524,13 +524,14 @@ contains
 
   subroutine tgrid_calculate(this)
     ! fill in the data
-    use paras_phy, only : eunit
+    use paras_phy, only : eunit, ei
     use profile, only : psi1
     use paras_num
     use radial_grid
     use orbit
     use orbit_integral
     use orbit_classify
+    use nl
     implicit none
 
     type(tgrid) :: this
@@ -552,8 +553,10 @@ contains
                this%periodn(i1)%y(i2), istat)
           if (istat .ne. 1) then
              this%periodn(i1)%y(i2) = -1.
-             write(*,*) 'orbit does not exist on n grid at (muB0, E, ipphi) = '&
-                  ,this%mub0/eunit, this%periodn(i1)%x(i2)/eunit, i1
+             write(*,*) istat
+             write(*,*) 'orbit does not exist on n grid at (muB0, E, pphi/e psi1) = '&
+                  ,this%mub0/1000./eunit, this%periodn(i1)%x(i2)/1000./eunit, &
+                  this%pphigrid(i1) / ei/psi1
              write(*,*) 'orbit status', istat
           else 
              call orbit_int(r, theta, norbitintsample,&
@@ -644,7 +647,7 @@ this%mub0/eunit, ee/eunit, ipos
        if (iend   .gt. this%ielementmax(ipos)) this%ielementmax(ipos) = iend
        if (istart .lt. this%ielementmin(ipos)) this%ielementmin(ipos) = istart
     end do
-       
+
     if (allocated(work)) deallocate(work)
   end subroutine tgrid_calculate
 
