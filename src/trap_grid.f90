@@ -531,7 +531,6 @@ contains
     use orbit
     use orbit_integral
     use orbit_classify
-    use nl
     implicit none
 
     type(tgrid) :: this
