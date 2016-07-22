@@ -345,7 +345,7 @@ contains
     use paras_phy
     use paras_num
     use profile
-    use orbit_classify, only : copassingedge
+    use orbit_classify, only : eeonaxis
     implicit none
 
     real, intent(in) :: ee, mub0, pphi
@@ -367,7 +367,7 @@ contains
     else 
        if (pphi .ge. -psi1 * ei) then
           ! must be ct-passing / trapped, search from 0 to r(pphi)
-          if (ee .ge. copassingedge(mub0, pphi)) then
+          if (ee .ge. eeonaxis(mub0, pphi)) then
              ! start searching from the high field side
              r1 =  -psitor(- pphi / ei)
              r2 = 0.
@@ -378,7 +378,7 @@ contains
           end if
        else
           ! must be ct-passing / trapped, search from 0 to 1
-          if (ee .ge. copassingedge(mub0, pphi)) then
+          if (ee .ge. eeonaxis(mub0, pphi)) then
              ! start searching from the high field side
              r1 = -rlost
              r2 =  0.

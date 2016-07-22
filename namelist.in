@@ -8,9 +8,9 @@
  NEIGEN          = 1,
  OMEGAIN(1)      = (244760.542334162, 27653.8481392209),
  VSIGN_IN        = -1,
- ENERGY_IN       = 75.,
+ ENERGY_IN       = 49.6977314977943,
  MUB0_IN         = 37.5,
- PPHI_IN         = -0.75,
+ PPHI_IN         = -1,
  IENERGY_TPBOUND = 0,
  ENERGY_LOG_IN   = 20.,
  

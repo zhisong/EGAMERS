@@ -307,20 +307,20 @@ contains
     ds = 1. / real(npphin + 1)
     i1 = 1
     i2 = npphin
-    trapedgetmp = trapedge(mub0, sgrid(ds * real(i1)), istat)
+    trapedgetmp = stagedge(mub0, sgrid(ds * real(i1)), 1, istat)
     ! determine the range of pphi
     ! right boundary
     do while (istat .le. 0)
        i1 = i1 + 1
-       trapedgetmp = trapedge(mub0, sgrid(ds * real(i1)), istat)
+       trapedgetmp = stagedge(mub0, sgrid(ds * real(i1)), 1, istat)
        if (i1 .ge. npphin) exit
     end do
     
     ! left boundary, crossing of lost boundary and trap edge
-    trapedgetmp = trapedge(mub0, sgrid(ds * real(i2)), istat)
+    trapedgetmp = stagedge(mub0, sgrid(ds * real(i2)), 1, istat)
     do while ((trapedgetmp .ge. traplost(mub0,  sgrid(ds * real(i2)))) .or. (istat .ne. 1))
        i2 = i2 - 1
-       trapedgetmp = trapedge(mub0,  sgrid(ds * real(i2)), istat)
+       trapedgetmp = stagedge(mub0,  sgrid(ds * real(i2)), 1, istat)
        if (i2 .le. 1) exit
     end do
 
@@ -353,7 +353,7 @@ contains
           end if
           ! calculate the lowest energy of trapped particles
 
-          this%etrapedge(i3) = trapedge(mub0, this%pphigrid(i3), istat)
+          this%etrapedge(i3) = stagedge(mub0, this%pphigrid(i3), 1, istat)
           if (istat .ne. 1) then
              write(*,*) 'error when calculating trap edge'
           end if

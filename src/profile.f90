@@ -145,6 +145,14 @@ module profile
       real, dimension(nmaxroot) :: xroots
       integer :: nroots
       
+      if (psiin .eq. 0) then
+         psitor = 0.
+         return
+      else if (psiin .eq. psi1) then
+         psitor = 1.
+         return
+      end if
+
       call spline_find(psir, psiin, 1, psir%n, nroots, xroots)
 
       if (nroots .ne. 1) then

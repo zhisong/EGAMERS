@@ -176,7 +176,7 @@ contains
     real, intent(in) :: ee, mub0, pphi
     integer, intent(in) :: vsign
 
-    real :: pphiratio, eetpbound, eetrapedge, eetraplost
+    real :: pphiratio, eetpbound, eeedge, eelost
     integer :: otype, itype, ierr
 
     pphiratio = pphi / psi1 / ei
@@ -217,37 +217,59 @@ contains
           end if
        end if
     end if
+    
+    if (otype .eq. 0) then
+       ! stag edge and lost boundary for trapped particles
+       eeedge = stagedge(mub0, pphi, 1, ierr)
+       eelost = traplost(mub0, pphi)
+    else if (otype .eq. 1) then
+       ! stag edge and lost boundary for co-passing particles
+       eeedge = stagedge(mub0, pphi, 1, ierr)
+       eelost = coplost(mub0, pphi)
+    else if (otype .eq. -1) then
+       ! stag edge and lost boundary for ct-passing particles
+       eeedge = stagedge(mub0, pphi, -1, ierr)
+       eelost = ctplost(mub0, pphi)
+    end if
+
+    if (ierr .ne. 1) then
+       otype = - 100
+    end if
 
     if (otype .eq. 0) then
-       eetrapedge = trapedge(mub0, pphi, ierr)
-       eetraplost = traplost(mub0, pphi)
-       if (ierr .ne. 1) then
-          otype = - 100
-       end if
-    end if
-   
-    if (otype .eq. 0) then
-       if (ee .lt. eetrapedge) then
+       if (ee .lt. eeedge) then
           write(*,*) 'Energy too low for trap orbit'
-          otype = -100
-       else if (ee .gt. eetraplost) then
+       else if (ee .gt. eelost) then
           write(*,*) 'Trapped-lost'
-          otype = -100
        else
           write(*,*) 'Trapped'
        end if
-          
-       write(*,*) 'Min energy    :', eetrapedge/eunit/1000., 'keV'
-       write(*,*) 'Trapped lost  :', eetraplost/eunit/1000., 'keV'
+    else if (otype .eq. 1) then
+       if (ee .lt. eeedge) then
+          write(*,*) 'Energy too low for co-passing'
+       else if (ee .gt. eelost) then
+          write(*,*) 'Co-passing lost'
+       else
+          write(*,*) 'Co-passing'
+       end if
+    else if (otype .eq. -1) then
+       if (ee .ge. eeedge) then
+          write(*,*) 'Energy too high for ct-passing'
+       else if (ee .lt. eelost) then
+          write(*,*) 'Ct-passing lost'
+       else
+          write(*,*) 'Counter-passing'
+       end if
+    end if
+
+    if (otype .ne. -100) then
+       write(*,*) 'Stag edge     :', eeedge/eunit/1000., 'keV'
+       write(*,*) 'Lost          :', eelost/eunit/1000., 'keV'
        if (itype .eq. 1) then
           write(*,*) 'T/P bound (I) :', eetpbound/eunit/1000., 'keV'
-       else
+       else if (itype .eq. 2) then
           write(*,*) 'T/P bound (II):', eetpbound/eunit/1000., 'keV'
        end if
-    else if (otype .eq. 1) then
-       write(*,*) 'Co-passing'
-    else if (otype .eq. -1) then
-       write(*,*) 'Counter-passing'
     end if
   end subroutine printorbittype
 

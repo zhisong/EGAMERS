@@ -3,7 +3,7 @@ module orbit_classify
 
   implicit none
 
-  public :: tpbound, trapedge, traplost, ctpassinglost, copassingedge
+  public :: tpbound, stagedge, traplost, coplost, ctplost, eeonaxis
   private :: fbry, dfbrydr, dfbrydy, d2fbrydrdy
 
 contains
@@ -27,11 +27,18 @@ contains
     real :: a11, a12, a21, a22, f1, f2
     real :: b11, b12, b21, b22, ddr, ddy
 
-    if (pphi > 0) then
+    itype = 0
+
+    if (pphi .gt. 0.) then
        ! no trapped particles for P_phi > 0
        tpbound = 0.
        return
-    endif
+    else if (pphi .eq. 0.) then
+       ! special treatment
+       tpbound = mub0
+       itype = 2
+       return
+    end if
 
     ! initial guess : v_\parallel = 0
     r1 = psitor(-pphi / ei)
@@ -136,31 +143,9 @@ contains
 
   end function tpbound
 
-!!$  real function trapedge(mub0, pphi, istat)
-!!$    ! find the lowest energy limit for trapped particles
-!!$    ! istat : success(1), error(-1)
-!!$    use paras_phy
-!!$    use profile
-!!$    implicit none
-!!$
-!!$    real, intent(in) :: mub0, pphi
-!!$    integer, intent(out) :: istat
-!!$
-!!$    real :: r1
-!!$    
-!!$    if ((pphi .le. -ei * psi(1.)) .or. (pphi .ge. 0.)) then
-!!$       ! no trapped particles for P_phi > 0 and P_pphi < -e psi(1)
-!!$       trapedge = -1.
-!!$       istat = 0
-!!$       return
-!!$    end if
-!!$
-!!$    trapedge = mub0 * (1. - eps * psitor(-pphi/ei))
-!!$    istat = 1
-!!$  end function trapedge
-
-  real function trapedge(mub0, pphi, istat)
-    ! find the lowest energy limit for co-passing stagnation paticles
+  real function stagedge(mub0, pphi, vsign, istat)
+    ! find the edge for stagnation paticles
+    ! vsign : =1 co-passing/trapped, =-1 ct-passing 
     ! istat : success(1), none(0), error(-1)
     use paras_phy
     use paras_num
@@ -168,14 +153,31 @@ contains
     implicit none
 
     real, intent(in) :: mub0, pphi
+    integer, intent(in) :: vsign
     integer, intent(out) :: istat
 
-    real :: r1, r2, psi11, det, vpar, f1, ddr
+    real :: r1, r2, psi11, det, vpar, f1, ddr, side
     integer :: flagnotfound, i
 
-    if ((pphi .le. -ei * psi(1.))) then
-       ! no  particles  P_pphi < -e psi(1)
-       trapedge = -1.
+    if ((pphi .le. -ei * psi(1.)) .and. (vsign .eq. 1)) then
+       ! no  particles  P_pphi < -e psi(1) if vsign == 1
+       stagedge = -1.
+       istat = 0
+       return
+    else if ((pphi .ge. 0.) .and. (vsign .eq. -1)) then
+       ! no  particles  P_pphi > 0 if vsign == -1
+       stagedge = -1.
+       istat = 0
+       return
+    end if
+    if (vsign .eq. 1) then
+       side = 1.
+    else if (vsign .eq. -1) then
+       side = -1.
+    else
+       ! vsign must be 1 or -1
+       write(*,*) 'In stagedge : vsign must be 1 or -1'
+       stagedge = -1.
        istat = 0
        return
     end if
@@ -187,8 +189,8 @@ contains
     i = 0
     ! Newton's methods
     do while ((flagnotfound .eq. 0) .and. (i .le. maxittpbound))
-       f1 = fbry(r1, 1., mub0, pphi)
-       det = dfbrydr(r1, 1., mub0, pphi)
+       f1 = fbry(r1, side, mub0, pphi)
+       det = dfbrydr(r1, side, mub0, pphi)
        if (det .eq. 0.) then
           ! matrix singluar, search failed
           exit
@@ -198,7 +200,7 @@ contains
 
        if ((r2 .gt. 1.) .or. (r2 .le. 0.)) then
           ! search failed
-          trapedge = -1
+          stagedge = -1
           istat = -1
           return
        end if
@@ -212,19 +214,19 @@ contains
     end do
     if (flagnotfound .eq. 0) then
        ! boundary not found
-       trapedge = -1.
+       stagedge = -1.
        istat = -1
        return
     end if
 
     psi11 = psi(r2)
-    vpar = (pphi + ei * psi11) / mi / R0 / (1 + eps * r2)
-    trapedge = 0.5 * mi * vpar**2 + mub0 * (1 - eps * r2)
+    vpar = (pphi + ei * psi11) / mi / R0 / (1 + side * eps * r2)
+    stagedge = 0.5 * mi * vpar**2 + mub0 * (1 - side * eps * r2)
     istat = 1
     
-    ! slightly raise the energy to prevent ill-behaviour in numerics
-    trapedge = trapedge * (1 )
-  end function trapedge
+    ! slightly modify the energy to prevent ill-behaviour in numerics
+    stagedge = stagedge * (1 + side * 1e-10)
+  end function stagedge
 
   real function traplost(mub0, pphi)
     ! find the trapped-confined/trapped-lost boundary
@@ -240,7 +242,18 @@ contains
     traplost = eeout
   end function traplost
 
-  real function ctpassinglost(mub0, pphi)
+  real function coplost(mub0, pphi)
+    ! find the cop-confined/lost boundary
+    ! which is the same as traplost, so just call it
+    implicit none
+    
+    real, intent(in) :: mub0, pphi
+    
+    coplost = traplost(mub0, pphi)
+
+  end function coplost
+
+  real function ctplost(mub0, pphi)
     ! find the ct-passing-confined/lost boundary
 
     use paras_phy
@@ -251,11 +264,11 @@ contains
     real :: eeout
 
     eeout = mub0 * (1 + eps) + (pphi + ei * psi(1.))**2/mi/2./R0**2/(1.-eps)**2
-    ctpassinglost = eeout
+    ctplost = eeout
 
-  end function ctpassinglost
+  end function ctplost
 
-  real function copassingedge(mub0, pphi)
+  real function eeonaxis(mub0, pphi)
     ! find the co-passing edge
 
     use paras_phy
@@ -266,9 +279,9 @@ contains
     real :: eeout
 
     eeout = mub0 + (pphi)**2/mi/2./R0**2
-    copassingedge = eeout
+    eeonaxis = eeout
 
-  end function copassingedge
+  end function eeonaxis
 
   real function fbry(r, y, mub0, pphi)
     ! function used to find TYPE II t/p boundary
