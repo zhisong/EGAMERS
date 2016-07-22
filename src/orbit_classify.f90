@@ -183,8 +183,12 @@ contains
     end if
 
     ! initial guess : v_\parallel = 0
-!    r1 = psitor(-pphi / ei)
-    r1 = 1.
+    !    r1 = psitor(-pphi / ei)
+    if (vsign .eq. -1) then
+       r1 = 0.
+    else
+       r1 = 0.
+    end if
     flagnotfound = 0
     i = 0
     ! Newton's methods

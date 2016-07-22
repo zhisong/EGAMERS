@@ -8,9 +8,9 @@
  NEIGEN          = 1,
  OMEGAIN(1)      = (244760.542334162, 27653.8481392209),
  VSIGN_IN        = -1,
- ENERGY_IN       = 49.6977314977943,
+ ENERGY_IN       = 50,
  MUB0_IN         = 37.5,
- PPHI_IN         = -1,
+ PPHI_IN         = -0.3,
  IENERGY_TPBOUND = 0,
  ENERGY_LOG_IN   = 20.,
  
@@ -59,7 +59,7 @@
 IQ_TYPE = 1,
 QPOLY(1) = 3.,
 QPOLY(2) = 0.,
-QPOLY(3) = 0.,
+QPOLY(3) = 3.,
 &END
 
 ! FAST ION DISTRIBUTION FUNCTION
