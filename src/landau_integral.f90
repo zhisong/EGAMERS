@@ -112,6 +112,7 @@ contains
     ans = cubicvaluec(f(1), f(2), f(3), f(4), gx(3)) * getlog(gx(3), a, b, sgn(3))
     ans = ans / (gx(3) - gx(1)) / (gx(3) - gx(2)) / g(1)
     landauint = landauint + ans
+
   end function landauint
 
   complex function getlog(t, a, b, sgn)

@@ -108,6 +108,7 @@ contains
     end do
 
     mat3 = cmplx(- nf_ratio * a**2 * ei * pi**2 / mi**2 / mib / R0 /B0) * mat3
+
     call matrix_destroy(tmpmat)
     call matrix_destroy(tmpmat2)
   end subroutine getmat3trap

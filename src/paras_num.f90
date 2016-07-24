@@ -40,6 +40,9 @@ module paras_num
   integer, parameter :: nmaxelement = 100
   ! step size for derivative calculation
   real, parameter :: ddx = 0.0001
+  ! the min difference between trapedge and traplost energy to 
+  ! take into account, in unit of mub0
+  real, parameter :: mindiff_el = 1e-5
 
   ! maximum grid points in a cubic spline interpolation
   integer, parameter :: nmaxspline = 1000

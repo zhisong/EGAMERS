@@ -30,7 +30,7 @@ program EGAMERS
   write(*,*) '******** EGAM RADIAL STRUCTURE CODE (EGAMERS) ********'
   write(*,*) '               Version May 2016'
   write(*,*)
-  
+
   call readnamelist()
   call paras_phy_init()
   call profile_init()

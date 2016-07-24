@@ -53,6 +53,16 @@ IQ_TYPE = 1,
 QPOLY(1) = 2.64,
 QPOLY(2) = -3.2
 QPOLY(3) = 4.,
+ITE_TYPE = 1,
+ITI_TYPE = 1,
+TEPOLY(1) = 1.,
+TEPOLY(2) = 0.,
+TEPOLY(3) = -1.,
+TIPOLY(1) = 1.,
+TIPOLY(2) = 0.,
+TIPOLY(3) = -1.,
+TE0 = 3.,
+TI0 = 1.,
 &END
 
 ! FAST ION DISTRIBUTION FUNCTION

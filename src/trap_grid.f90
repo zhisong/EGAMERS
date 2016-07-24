@@ -285,7 +285,7 @@ contains
     ! INPUT : mub0, number of pphi grid, number of n energy grid,
     !         number of b energy grid, b grid upper limit,
     !         number of harmonics
-
+    use paras_num, only : mindiff_el
     use radial_grid
     use orbit_classify
     implicit none
@@ -318,7 +318,9 @@ contains
     
     ! left boundary, crossing of lost boundary and trap edge
     trapedgetmp = stagedge(mub0, sgrid(ds * real(i2)), 1, istat)
-    do while ((trapedgetmp .ge. traplost(mub0,  sgrid(ds * real(i2)))) .or. (istat .ne. 1))
+    do while ((trapedgetmp .ge. traplost(mub0, sgrid(ds * real(i2)))&
+         - mub0*mindiff_el) .or. (istat .ne. 1))
+       ! mindiff_el : the least difference of trapedge and traplost
        i2 = i2 - 1
        trapedgetmp = stagedge(mub0,  sgrid(ds * real(i2)), 1, istat)
        if (i2 .le. 1) exit
