@@ -73,9 +73,12 @@ contains
 
     if (flagnotfound .eq. 0) then
        ! t/p boundary not found, try TYPE II
-       do j = 1, 3
+       do j = 0, 3
           r1 = psitor(-pphi / ei)
-          if (j .eq. 1) then
+          r1 = r1 / 2.
+          if (j .eq. 0) then
+             y1 = -0.75
+          else if (j .eq. 1) then
              y1 = -0.5
           else if (j .eq. 2) then
              y1 = 0.
@@ -187,7 +190,7 @@ contains
     if (vsign .eq. -1) then
        r1 = 0.
     else
-       r1 = 0.
+       r1 = 1.
     end if
     flagnotfound = 0
     i = 0

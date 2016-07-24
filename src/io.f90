@@ -217,7 +217,7 @@ contains
           end if
        end if
     end if
-    
+
     if (otype .eq. 0) then
        ! stag edge and lost boundary for trapped particles
        eeedge = stagedge(mub0, pphi, 1, ierr)

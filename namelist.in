@@ -4,14 +4,14 @@
 
 ! WHAT TO DO IN THE CODE
 &RUNS
- IMODE           = 3,
+ IMODE           = 2,
  NEIGEN          = 1,
  OMEGAIN(1)      = (244760.542334162, 27653.8481392209),
- VSIGN_IN        = -1,
- ENERGY_IN       = 50,
+ VSIGN_IN        = 1,
+ ENERGY_IN       = 34.9,
  MUB0_IN         = 37.5,
- PPHI_IN         = -0.3,
- IENERGY_TPBOUND = 0,
+ PPHI_IN         = -0.35,
+ IENERGY_TPBOUND = -1,
  ENERGY_LOG_IN   = 20.,
  
 &END
@@ -40,7 +40,7 @@
  NGTRAP_ENERGYN  = 50,
  NGTRAP_ENERGYB  = 20,
  TRAP_EBEND      = 20.,
- NGTRAP_PPHI     = 50 
+ NGTRAP_PPHI     = 100 
 
 &END
 
