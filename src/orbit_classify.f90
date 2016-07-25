@@ -147,7 +147,7 @@ contains
   end function tpbound
 
   real function stagedge(mub0, pphi, vsign, istat)
-    ! find the edge for stagnation paticles
+    ! find the edge for stagnation paticles (fixed pphi, output energy)
     ! vsign : =1 co-passing/trapped, =-1 ct-passing 
     ! istat : success(1), none(0), error(-1)
     use paras_phy
@@ -235,6 +235,93 @@ contains
     stagedge = stagedge * (1 + side * 1e-10)
   end function stagedge
 
+  real function stagedgepphi(mub0, ee, vsign, istat)
+    ! find the edge for stagnation paticles (fixed energy, output pphi)
+    ! vsign : =1 co-passing/trapped, =-1 ct-passing 
+    ! istat : success(1), none(0), error(-1)
+    use paras_phy
+    use paras_num
+    use profile
+    implicit none
+
+    real, intent(in) :: mub0, ee
+    integer, intent(in) :: vsign
+    integer, intent(out) :: istat
+
+    real :: r1, r2, det, vpar, f1, ddr, side, mub, Rbar
+    integer :: flagnotfound, i
+
+    if ((ee .le. mub0 * (1 - eps)) .and. (vsign .eq. 1)) then
+       ! no  particles E < mub0 (1-a/R0) if vsign == 1
+       stagedgepphi = -1.
+       istat = 0
+       return
+    else if ((ee .le. mub0) .and. (vsign .eq. -1)) then
+       ! no  particles E < mub0 if vsign == -1
+       stagedgepphi = -1.
+       istat = 0
+       return
+    end if
+    if ((vsign .ne. 1) .and. (vsign .ne. -1)) then
+       ! vsign must be 1 or -1
+       write(*,*) 'In stagedgephi : vsign must be 1 or -1'
+       stagedgepphi = -1.
+       istat = 0
+       return
+    end if
+
+    ! initial guess : r = 0
+    r1 = 0.2
+    flagnotfound = 0
+    i = 0
+    side = float(vsign)
+    ! Newton's methods
+    do while ((flagnotfound .eq. 0) .and. (i .le. maxittpbound))
+       f1 = rvt(r1, mub0, ee, vsign)
+       det = drvtdr(r1, mub0, ee, vsign)
+       if (det .eq. 0.) then
+          ! matrix singluar, search failed
+          write(*,*) 'singular matrix'
+          exit
+       end if
+       ddr = f1 / det
+       r2 = r1 - ddr
+       
+       if ((r2 .gt. 1.) .or. (r2 .le. 0.)) then
+          ! search failed
+          stagedgepphi = -1
+          istat = -1
+          return
+       end if
+    
+       if (abs(ddr/r2) .le. errtpbound) then
+          ! the boundary is found
+          flagnotfound = 1
+       end if
+       r1 = r2
+       i = i + 1
+    end do
+    if (flagnotfound .eq. 0) then
+       ! boundary not found
+       stagedgepphi = -1.
+       istat = -1
+       return
+    end if
+
+    mub = mub0 * (1 - r2 * eps * side)
+    Rbar = 1 + r2 * eps * side
+    vpar = sqrt((2*ee - 2*mub) / mi)
+    stagedgepphi = - ei * psi(r2) + mi * vpar * Rbar * R0 * side
+    istat = 1
+
+    ! slightly modify the energy to prevent ill-behaviour in numerics
+    if (stagedgepphi .le. 0) then
+       stagedgepphi = stagedgepphi * (1 + side * 1e-10)
+    else
+       stagedgepphi = stagedgepphi * (1 - side * 1e-10)
+    end if
+  end function stagedgepphi
+  
   real function traplost(mub0, pphi)
     ! find the trapped-confined/trapped-lost boundary
 
@@ -355,4 +442,44 @@ contains
 
   end function d2fbrydrdy
 
+  real function rvt(r, mub0, ee, vsign)
+    ! R * r (dtheta/dt) given r, mub0, ee and sign of vpar
+    use paras_phy
+    use profile
+    implicit none
+    
+    real, intent(in) :: r, mub0, ee
+    integer, intent(in) :: vsign
+    real :: mub, Rbar, vpar, side
+    
+    side = float(vsign)
+    mub = mub0 * (1 - r * eps * side)
+    Rbar = 1 + r * eps * side
+    vpar = sqrt((2*ee - 2*mub) / mi)
+
+    rvt =  mi * vpar**2 + mub0 * Rbar
+    rvt = - rvt / ei / B0 * side  + side * a * r * vpar / q(r)
+  end function rvt
+
+  real function drvtdr(r, mub0, ee, vsign)
+    ! r derivative of rvt
+    use paras_phy
+    use profile
+    implicit none
+
+    real, intent(in) :: r, mub0, ee
+    integer, intent(in) :: vsign
+    real :: mub, Rbar, vpar, side
+    
+    side = float(vsign)
+    mub = mub0 * (1 - r * eps * side)
+    Rbar = 1 + r * eps * side
+    vpar = sqrt((2*ee - 2*mub) / mi)
+    
+    drvtdr = -3. * mub0 / B0 / ei / R0 
+    drvtdr = drvtdr + a * side * vpar * (1 - r * dqdr(r) / q(r)) / q(r)
+    drvtdr = drvtdr + a * r * eps * mub0 / mi / vpar / q(r)
+    
+  end function drvtdr
+    
 end module orbit_classify

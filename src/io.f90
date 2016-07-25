@@ -177,7 +177,8 @@ contains
     integer, intent(in) :: vsign
 
     real :: pphiratio, eetpbound, eeedge, eelost
-    integer :: otype, itype, ierr
+    real :: pphiedge, pphilost
+    integer :: otype, itype, ierr, ierr2
 
     pphiratio = pphi / psi1 / ei
 
@@ -222,14 +223,17 @@ contains
        ! stag edge and lost boundary for trapped particles
        eeedge = stagedge(mub0, pphi, 1, ierr)
        eelost = traplost(mub0, pphi)
+       pphiedge = stagedgepphi(mub0, ee, 1, ierr2)
     else if (otype .eq. 1) then
        ! stag edge and lost boundary for co-passing particles
        eeedge = stagedge(mub0, pphi, 1, ierr)
        eelost = coplost(mub0, pphi)
+       pphiedge = stagedgepphi(mub0, ee, 1, ierr2)
     else if (otype .eq. -1) then
        ! stag edge and lost boundary for ct-passing particles
        eeedge = stagedge(mub0, pphi, -1, ierr)
        eelost = ctplost(mub0, pphi)
+       pphiedge = stagedgepphi(mub0, ee, -1, ierr2)
     end if
 
     if (ierr .ne. 1) then
@@ -255,7 +259,7 @@ contains
     else if (otype .eq. -1) then
        if (ee .ge. eeedge) then
           write(*,*) 'Energy too high for ct-passing'
-       else if (ee .lt. eelost) then
+       else if ((ee .lt. eelost).and.(pphi .le. -ei * psi1)) then
           write(*,*) 'Ct-passing lost'
        else
           write(*,*) 'Counter-passing'
@@ -270,6 +274,8 @@ contains
        else if (itype .eq. 2) then
           write(*,*) 'T/P bound (II):', eetpbound/eunit/1000., 'keV'
        end if
+
+       write(*,*) 'Stag edge pphi:', pphiedge / ei / psi1
     end if
   end subroutine printorbittype
 
