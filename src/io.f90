@@ -229,11 +229,25 @@ contains
        eeedge = stagedge(mub0, pphi, 1, ierr)
        eelost = coplost(mub0, pphi)
        pphiedge = stagedgepphi(mub0, ee, 1, ierr2)
+       if (ee .ge. coplost(mub0, -ei*psi1)) then
+          pphilost = coplostpphi(mub0, ee)
+       else
+          pphilost = 0.
+       end if
     else if (otype .eq. -1) then
        ! stag edge and lost boundary for ct-passing particles
        eeedge = stagedge(mub0, pphi, -1, ierr)
-       eelost = ctplost(mub0, pphi)
+       if (pphi .le. - ei * psi1) then
+          eelost = ctplost(mub0, pphi)
+       else
+          eelost = 0.
+       end if
        pphiedge = stagedgepphi(mub0, ee, -1, ierr2)
+       if (ee .ge. ctplost(mub0, -ei*psi1)) then
+          pphilost = ctplostpphi(mub0, ee)
+       else
+          pphilost = 0.
+       end if
     end if
 
     if (ierr .ne. 1) then
@@ -275,7 +289,8 @@ contains
           write(*,*) 'T/P bound (II):', eetpbound/eunit/1000., 'keV'
        end if
 
-       write(*,*) 'Stag edge pphi:', pphiedge / ei / psi1
+       write(*,*) 'Stag edge pphi:', pphiedge / ei / psi1, 'ei psi1'
+       write(*,*) 'Lost pphi     :', pphilost / ei / psi1, 'ei psi1'
     end if
   end subroutine printorbittype
 

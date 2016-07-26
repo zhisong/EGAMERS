@@ -92,19 +92,58 @@ module nl
   
   ! number of mub0 grid points for trapped particles
   integer :: ngtrap_mub0 = 10
-  ! mub0 grid starts and ends at (in keV)
+  ! number of mub0 grid points for cop particles
+  real    :: ngcop_mub0 = 10
+  ! number of mub0 grid points for ctp particles
+  integer :: ngctp_mub0 = 10
+
+  ! mub0 grid starts and ends at (in keV) for trap
   real    :: trap_mub0start = 50.
   real    :: trap_mub0end   = 1000.
+  ! mub0 grid starts and ends at (in kev) for cop
+  real    :: cop_mub0start = 20.
+  real    :: cop_mub0end   = 100.
+  ! mub0 grid starts and ends at (in kev) for ctp
+  real    :: ctp_mub0start = 20.
+  real    :: ctp_mub0end   = 100
 
   ! number of normal energy grid points for trapped particles
   integer :: ngtrap_energyn = 50
+  ! cop particles
+  integer :: ngcop_energyn = 50
+  ! and ctp particles
+  integer :: ngctp_energyn = 50
+
+  ! start and end energy grid for cop and ctp particles
+  ! start energy not used if lower than tpbound
+  ! cop
+  real    :: cop_eestart = 50.
+  real    :: cop_eeend = 1000.
+  ! ctp
+  real    :: ctp_eestart = 50.
+  real    :: cop_eeend = 1000.
+ 
   ! number of special energy grid points for trapped particles
   integer :: ngtrap_energyb = 20
+  ! cop particles
+  integer :: ngcop_energyb = 20
+  ! and ctp particles
+  integer :: ngctp_energyb = 20
+
   ! special energy grid ends at E = Etpbound - mub0 exp(-trapebend)
   real    :: trap_ebend = 20.
+  ! cop particles E = Etpbound + mub0 exp(-trapebend)
+  real    :: cop_ebend = 20.
+  ! and ctp particles
+  real    :: ctp_ebend = 20.
 
   ! number of Pphi grid points for trapped particles
   integer :: ngtrap_pphi = 50
+  ! cop particles
+  integer :: ngcop_pphi = 50
+  ! and ctp particles
+  integer :: ngctp_pphi = 50
+
 
   ! //////// NAMELIST PHYS ////////
   

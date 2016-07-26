@@ -347,20 +347,52 @@ contains
 
   end function coplost
 
+  real function coplostpphi(mub0, ee)
+    ! find the cop lost pphi boundary for given mub0 and ee
+    
+    use paras_phy
+    use profile
+    implicit none
+
+    real, intent(in) :: mub0, ee
+    real :: pphiout
+    
+    pphiout = 2. * (ee - (mub0 * (1-eps))) * mi * R0**2 * (1+eps)**2
+    pphiout = sqrt(pphiout) - ei * psi1
+    coplostpphi = pphiout
+
+  end function coplostpphi
+    
   real function ctplost(mub0, pphi)
-    ! find the ct-passing-confined/lost boundary
+    ! find the ct-passing-confined/lost energy boundary for given pphi and mub0 
 
     use paras_phy
     use profile
     implicit none
 
-    real :: mub0, pphi, ee
+    real, intent(in) :: mub0, pphi
     real :: eeout
 
-    eeout = mub0 * (1 + eps) + (pphi + ei * psi(1.))**2/mi/2./R0**2/(1.-eps)**2
+    eeout = mub0 * (1 + eps) + (pphi + ei * psi1)**2/mi/2./R0**2/(1.-eps)**2
     ctplost = eeout
 
   end function ctplost
+
+  real function ctplostpphi(mub0, ee)
+    ! find the ctp lost boundary pphi for given energy and mub0
+    
+    use paras_phy
+    use profile
+    implicit none
+
+    real, intent(in) :: mub0, ee
+    real :: pphiout
+
+    pphiout = 2.* (ee - mub0 * (1+eps)) * mi * R0**2 * (1-eps)**2
+    pphiout = - sqrt(pphiout) - ei * psi1
+    ctplostpphi = pphiout
+
+  end function ctplostpphi
 
   real function eeonaxis(mub0, pphi)
     ! find the co-passing edge
