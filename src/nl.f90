@@ -121,7 +121,7 @@ module nl
   real    :: cop_eeend = 1000.
   ! ctp
   real    :: ctp_eestart = 50.
-  real    :: cop_eeend = 1000.
+  real    :: ctp_eeend = 1000.
  
   ! number of special energy grid points for trapped particles
   integer :: ngtrap_energyb = 20
@@ -215,8 +215,12 @@ contains
          ienable_tpbound, np_trap, np_cop, np_ctp, norbitintsample, &
          dtorbitn, dtorbitb, erreig, nmaxit
     ! grid settings
-    namelist /GRID/ nradial_grid, ngtrap_mub0, trap_mub0start, trap_mub0end,&
-         ngtrap_energyn, ngtrap_energyb, trap_ebend, ngtrap_pphi
+    namelist /GRID/ nradial_grid, ngtrap_mub0, ngcop_mub0, ngctp_mub0, &
+         trap_mub0start, trap_mub0end, cop_mub0start, cop_mub0end, &
+         ctp_mub0start, ctp_mub0end, ngtrap_energyn, ngtrap_energyb, &
+         ngcop_energyn, ngcop_energyb, ngctp_energyn, ngctp_energyb, &
+         trap_ebend, cop_ebend, ctp_ebend, ngtrap_pphi, ngcop_pphi, &
+         ngctp_pphi
     ! physics settings
     namelist /PHYS/ af, zf, ai, R0, a, B0
     ! plasma equilibrium profiles

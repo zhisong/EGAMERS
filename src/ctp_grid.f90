@@ -59,6 +59,9 @@ module ctp_grid
      ! harmonic count
      integer, public :: np
 
+     ! enabled t/p boundary
+     integer, public :: itpbound
+
   end type ctpgrid
 
   private
@@ -72,7 +75,9 @@ contains
     !         number of pphi grid, number of n energy grid,
     !         number of b energy grid, b grid upper limit,
     !         number of harmonics, treat the t/p boundary(1) or not(0)
+    use paras_phy, only : ei, eunit
     use paras_num, only : mindiff_el
+    use profile, only : psi1
     use radial_grid
     use orbit_classify
     implicit none
@@ -81,11 +86,43 @@ contains
     real, intent(in) :: mub0, eehigh, eelow, eeendb
     integer, intent(in) :: npphin, neen, neeb, np, itpbound
 
+    real :: pphimin, pphimax
+    integer :: istat
+    
     this%mub0 = mub0
     this%np = np
     this%neen = neen
     this%neeb = neeb
 
+    ! t/p boundary turn on?
+    if (itpbound .le. 0) then
+       if (eelow .le. ctplost(mub0, -ei * psi1)) then
+          ! specified energy lower then tpbound, tpbound forced to turn on
+          this%itpbound = 1
+          write(*,*) 'In ctpgrid_init : lowest grid energy from the namelist is lower than the t/p boundary, t/p boundary function forced to enable'
+       else
+          this%itpbound = 1
+       end if
+    else
+       this%itpbound = 1
+    end if
+
+    ! the min |pphi|, 0 or stag of the lowest energy particle
+    if (this%itpbound .eq. 0.) then
+       pphimin = 0.
+    else
+       pphimin = stagedgepphi(mub0, eelow, -1, istat)
+       if (istat .ne. 1) then
+          write(*,*) 'Finding stag edge failed in ctpgrid_init, mub0 = ', &
+               mub0 / eunit / 1000., ' keV'
+          pphimin = 0.
+       end if
+    end if
+
+    ! the max |pphi|, lost boundary of the highest energy particle
+    pphimax = ctplostpphi(mub0, eehigh)
+    
+       
   end subroutine ctpgrid_init
 
 end module ctp_grid

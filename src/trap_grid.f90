@@ -85,7 +85,7 @@ module trap_grid
   end type tgrid
 
   private
-  public :: tgrid_init, tgrid_destroy, tgrid_calculate, sgrid, getperiod, &
+  public :: tgrid_init, tgrid_destroy, tgrid_calculate, getperiod, &
        getperiodb, findperiod, getvpm, getvpmb, istype1, indexn2b, indexb2n, &
        eetoeelog, eelogtoee
 
