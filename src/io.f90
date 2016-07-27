@@ -224,6 +224,11 @@ contains
        eeedge = stagedge(mub0, pphi, 1, ierr)
        eelost = traplost(mub0, pphi)
        pphiedge = stagedgepphi(mub0, ee, 1, ierr2)
+       if (ee .ge. coplost(mub0, -ei*psi1)) then
+          pphilost = coplostpphi(mub0, ee)
+       else
+          pphilost = 0.
+       end if
     else if (otype .eq. 1) then
        ! stag edge and lost boundary for co-passing particles
        eeedge = stagedge(mub0, pphi, 1, ierr)

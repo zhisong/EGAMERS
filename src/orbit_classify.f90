@@ -3,8 +3,28 @@ module orbit_classify
 
   implicit none
 
-  public :: tpbound, stagedge, traplost, coplost, ctplost, eeonaxis
-  private :: fbry, dfbrydr, dfbrydy, d2fbrydrdy
+  ! functions
+  ! (public)
+  ! tpbound      - the t/p boundary energy, given mub0 and pphi
+  ! stagedge     - the energy edge for stagnation particles, given mub0 and pphi
+  ! stagedgepphi - the pphi edge for stagnation particles, given mub0 and energy
+  ! traplost     - lost energy for trapped particles, given mub0 and pphi
+  ! coplost      - lost energy for co-passing particles, given mub0 and pphi
+  ! coplostpphi  - lost pphi for co-passing, given mub0 and energy
+  ! ctplost      - lost energy for ct-passing particles, given mub0 and pphi
+  ! ctplostpphi  - lost pphi for ct-passing particles, given mub0 and pphi
+  ! eeonaxis     - energy of particles through the axis, given mub0 and pphi
+  ! losttpbound  - the pphi where cop lost boundary hits the tpbound
+!!$  ! type12tpbound- find the pphi where TYPE I t/p boundary turns into TYPE II
+  !
+  ! (private)
+  ! rvtdr, drvtdr- functions used in stagedgepphi
+  ! fbry, dfbrydr, dfbrydy, df2brydrdy - functions used in stagedge and tpbound
+  
+  public :: tpbound, stagedge, traplost, coplost, ctplost, eeonaxis, &
+       stagedgepphi, coplostpphi, ctplostpphi, losttpbound
+  
+  private
 
 contains
 
@@ -56,6 +76,7 @@ contains
        end if
        psi11 =  -pphi/ei - B0 / 2.  * r1 * a * (R0 - r1 * a)  / q(r1)
        psi11 = psi11 + sqrt(det) * (R0 - r1 * a) / 2. / q(r1) / ei
+
        if (psi11 .lt. 0.) then
           ! TYPE I search failed
           exit
@@ -146,6 +167,60 @@ contains
 
   end function tpbound
 
+!!$  real function type12tpbound(mub0, istat)
+!!$    ! find the pphi value where type I tpbound turns into type II
+!!$    use paras_phy, only : ei
+!!$    use paras_num, only : errtpbound, maxittpbound
+!!$    use profile, only : psi1
+!!$    implicit none
+!!$
+!!$    real, intent(in) :: mub0
+!!$    integer, intent(out) :: istat
+!!$
+!!$    integer :: i1, typemid, ifound
+!!$    real :: pphileft, pphiright, pphimid, tpboundtmp
+!!$
+!!$    pphileft = - ei * psi1
+!!$    pphiright = 0.
+!!$    
+!!$    i1 = 1
+!!$    ifound = 0
+!!$    do while ((ifound .le. 0) .and. (i1 .le. maxittpbound))
+!!$       ! binary search
+!!$       pphimid = (pphileft + pphiright) / 2.
+!!$       tpboundtmp = tpbound(mub0, pphimid, typemid)
+!!$       write(*,*) pphimid / ei / psi1, typemid
+!!$       if (typemid .le. 0) then
+!!$          write(*,*) 'tpbound return error in type12tpbound'
+!!$          i1 = maxittpbound
+!!$          exit
+!!$       end if
+!!$
+!!$       if (abs((pphimid - pphileft)/pphimid) .le. errtpbound) then
+!!$          ! precision reached
+!!$          ifound = 1
+!!$       end if
+!!$       
+!!$       if (typemid .eq. 1) then
+!!$          pphileft = pphimid
+!!$       else
+!!$          pphiright = pphimid
+!!$       end if
+!!$          
+!!$       i1 = i1 + 1
+!!$       
+!!$    end do
+!!$
+!!$    if (ifound .le. 0) then
+!!$       write(*,*) 'type12tpbound failed'
+!!$       istat = -1
+!!$       type12tpbound = -100
+!!$    else
+!!$       type12tpbound = pphimid
+!!$    end if
+!!$    
+!!$  end function type12tpbound
+  
   real function stagedge(mub0, pphi, vsign, istat)
     ! find the edge for stagnation paticles (fixed pphi, output energy)
     ! vsign : =1 co-passing/trapped, =-1 ct-passing 
@@ -270,8 +345,12 @@ contains
        return
     end if
 
-    ! initial guess : r = 0
-    r1 = 0.2
+    ! initial guess : r = 0 or 1
+    if (vsign .eq. 1) then
+       r1 = 1.
+    else
+       r1 = 0.
+    end if
     flagnotfound = 0
     i = 0
     side = float(vsign)
@@ -394,6 +473,62 @@ contains
 
   end function ctplostpphi
 
+    real function losttpbound(mub0, istat)
+    ! find the pphi value where tpbound crosses traplost
+    use paras_phy, only : ei
+    use paras_num, only : errtpbound, maxittpbound
+    use profile, only : psi1
+    implicit none
+
+    real, intent(in) :: mub0
+    integer, intent(out) :: istat
+
+    integer :: i1, typemid, ifound
+    real :: pphileft, pphiright, pphimid, tpboundtmp, losttmp
+
+    pphileft = - ei * psi1
+    pphiright = 0.
+    
+    i1 = 1
+    ifound = 0
+    do while ((ifound .le. 0) .and. (i1 .le. maxittpbound))
+       ! binary search
+       pphimid = (pphileft + pphiright) / 2.
+       tpboundtmp = tpbound(mub0, pphimid, typemid)
+       losttmp = traplost(mub0, pphimid)
+ 
+       if (typemid .le. 0) then
+          write(*,*) 'tpbound return error in type12tpbound'
+          i1 = maxittpbound
+          exit
+       end if
+
+       if (abs((pphimid - pphileft)/pphimid) .le. errtpbound) then
+          ! precision reached
+          ifound = 1
+       end if
+       
+       if (tpboundtmp .ge. losttmp) then
+          pphileft = pphimid
+       else
+          pphiright = pphimid
+       end if
+          
+       i1 = i1 + 1
+       
+    end do
+
+    if (ifound .le. 0) then
+       write(*,*) 'losttpbound failed'
+       istat = -1
+       losttpbound = -100
+    else
+       istat = 1
+       losttpbound = pphimid
+    end if
+    
+  end function losttpbound
+  
   real function eeonaxis(mub0, pphi)
     ! find the co-passing edge
 

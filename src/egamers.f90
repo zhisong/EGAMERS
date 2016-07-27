@@ -15,7 +15,7 @@ program EGAMERS
   use trap_matrix
   use trap_grid
   use eigen
-  use orbit_classify, only : tpbound
+  use orbit_classify, only : tpbound, losttpbound
   implicit none
 
   integer, parameter :: nmax = 2000

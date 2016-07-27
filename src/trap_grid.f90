@@ -339,7 +339,7 @@ contains
        allocate(this%etpbound(this%npphin))
        allocate(this%etrapedge(this%npphin))
        allocate(this%elost(this%npphin))
-       this%ibstart = 0
+       this%ibstart = 1
        this%iloststart = i2
        do i3 = 1, this%npphin
           ipos = i1 + i3 - 1
