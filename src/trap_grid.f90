@@ -295,7 +295,7 @@ contains
     integer, intent(in) :: npphin, neen, neeb, np
     
     real :: ds, traplosttmp, trapedgetmp, dee, eestartb
-    integer :: i1, i2, i3, i4, i5, ipos
+    integer :: i1, i2, i3, i4, i5, ipos, negrid
     integer :: istat
     
     this%mub0 = mub0
@@ -396,21 +396,31 @@ contains
        ! fill in energy grid
        do i3 = 1, this%npphin
           ! initiate the spline object
-          call spline_init(this%periodn(i3), neen)
-          traplosttmp = traplost(mub0, this%pphigrid(i3))
+          ! energy grid size
+          dee = (this%etpbound(i3) - this%etrapedge(i3)) / real(neen - 1)
+          traplosttmp = this%elost(i3)
           if (traplosttmp .le. this%etpbound(i3)) then
              ! if trapped lost boundary is lower than t/p boundary
              ! grid from trap edge to trap lost boundary
-             dee = (traplosttmp - this%etrapedge(i3)) / real(neen - 1)
+             ! reduce the number of grid points
+             negrid = floor((traplosttmp - this%etrapedge(i3))/dee)  + 1
+             ! min 3 grid to allow spline
+             if (negrid .lt. 3) negrid = 3
+             ! adjust grid size to let two ends lay on the gridS
+             dee = (traplosttmp - this%etrapedge(i3)) / float(negrid - 1)
+             call spline_init(this%periodn(i3), negrid)
           else
              ! grid from trap edge to t/p boundary
-             dee = (this%etpbound(i3) - this%etrapedge(i3)) / real(neen - 1)
+             call spline_init(this%periodn(i3), neen)
+             negrid = neen
           end if
-          do i4 = 1, neen
+
+          do i4 = 1, negrid
              ! equal-distant energy grid
              this%periodn(i3)%x(i4) = this%etrapedge(i3) + real(i4 - 1) * dee
           end do
        end do
+
 
        ! special grid for TYPE I t/p boundary
         ! fill in the energy grid
@@ -439,8 +449,8 @@ contains
        do i1 = 1, this%npphin
           do i4 = 1, this%np
              do i3 = 1, nele
-                call spline_init(this%vpmgridn(i3,i4,i1), neen)
-                do i2 = 1, neen
+                call spline_init(this%vpmgridn(i3,i4,i1), this%periodn(i1)%n)
+                do i2 = 1, this%periodn(i1)%n
                    this%vpmgridn(i3,i4,i1)%x(i2) = this%periodn(i1)%x(i2)
                 end do
              end do
@@ -548,7 +558,7 @@ contains
     allocate(work(nele, this%np))
     ! calculate orbit period and orbit integral on all normal grid points
     do i1 = 1, this%npphin
-       do i2 = 1, this%neen
+       do i2 = 1, this%periodn(i1)%n
           call getorbit(this%periodn(i1)%x(i2), this%mub0,this%pphigrid(i1),&
                norbitintsample, 1, dtorbitn, r, theta, &
                this%periodn(i1)%y(i2), istat)
@@ -618,18 +628,20 @@ this%mub0/eunit, ee/eunit, ipos
    
     ! calculate all the splines
     do i1 = 1, this%npphin
-       call spline_build(this%periodn(i1), 0., 0., 2, 1, this%neen)
+       call spline_build(this%periodn(i1), 0., 0., 2, 1, this%periodn(i1)%n)
        ! equal-distant grid
        this%periodn(i1)%iequaldistant = .true.
        do i3 = 1, nele
+          istart = this%periodn(i1)%n
+          iend = this%periodn(i1)%n
           call findstartendn(this, i3, i1, istart, iend)
           do i4 = 1, this%np
              call spline_build(this%vpmgridn(i3,i4,i1), 0., 0., 2, istart, iend)
              this%vpmgridn(i3,i4,i1)%iequaldistant = .true.
           end do
        end do
-       this%ielementmax(i1) = getmax(this%neen, this%ielementmaxn(1, i1))
-       this%ielementmin(i1) = getmin(this%neen, this%ielementminn(1, i1))
+       this%ielementmax(i1)=getmax(this%periodn(i1)%n, this%ielementmaxn(1, i1))
+       this%ielementmin(i1)=getmin(this%periodn(i1)%n, this%ielementminn(1, i1))
     end do
     
     do i1 = 1, this%npphib
@@ -833,8 +845,7 @@ this%mub0/eunit, ee/eunit, ipos
     integer, intent(out):: istart, iend
 
     integer :: i1
-    
-    do i1 = 1, this%neen
+    do i1 = 1, this%periodn(ipphi)%n
        if ((this%ielementminn(i1,ipphi) .le. ielement) .and. &
             (this%ielementmaxn(i1,ipphi) .ge. ielement)) then
           istart = i1
@@ -842,7 +853,7 @@ this%mub0/eunit, ee/eunit, ipos
        end if
     end do
 
-    do i1 = this%neen, 1, -1
+    do i1 = this%periodn(ipphi)%n, 1, -1
        if ((this%ielementminn(i1,ipphi) .le. ielement) .and. &
             (this%ielementmaxn(i1,ipphi) .ge. ielement)) then
           iend = i1

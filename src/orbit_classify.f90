@@ -3,8 +3,28 @@ module orbit_classify
 
   implicit none
 
-  public :: tpbound, stagedge, traplost, coplost, ctplost, eeonaxis
-  private :: fbry, dfbrydr, dfbrydy, d2fbrydrdy
+  ! functions
+  ! (public)
+  ! tpbound      - the t/p boundary energy, given mub0 and pphi
+  ! stagedge     - the energy edge for stagnation particles, given mub0 and pphi
+  ! stagedgepphi - the pphi edge for stagnation particles, given mub0 and energy
+  ! traplost     - lost energy for trapped particles, given mub0 and pphi
+  ! coplost      - lost energy for co-passing particles, given mub0 and pphi
+  ! coplostpphi  - lost pphi for co-passing, given mub0 and energy
+  ! ctplost      - lost energy for ct-passing particles, given mub0 and pphi
+  ! ctplostpphi  - lost pphi for ct-passing particles, given mub0 and pphi
+  ! eeonaxis     - energy of particles through the axis, given mub0 and pphi
+  ! losttpbound  - the pphi where cop lost boundary hits the tpbound
+!!$  ! type12tpbound- find the pphi where TYPE I t/p boundary turns into TYPE II
+  !
+  ! (private)
+  ! rvtdr, drvtdr- functions used in stagedgepphi
+  ! fbry, dfbrydr, dfbrydy, df2brydrdy - functions used in stagedge and tpbound
+  
+  public :: tpbound, stagedge, traplost, coplost, ctplost, eeonaxis, &
+       stagedgepphi, coplostpphi, ctplostpphi, losttpbound
+  
+  private
 
 contains
 
@@ -56,6 +76,7 @@ contains
        end if
        psi11 =  -pphi/ei - B0 / 2.  * r1 * a * (R0 - r1 * a)  / q(r1)
        psi11 = psi11 + sqrt(det) * (R0 - r1 * a) / 2. / q(r1) / ei
+
        if (psi11 .lt. 0.) then
           ! TYPE I search failed
           exit
@@ -146,8 +167,62 @@ contains
 
   end function tpbound
 
+!!$  real function type12tpbound(mub0, istat)
+!!$    ! find the pphi value where type I tpbound turns into type II
+!!$    use paras_phy, only : ei
+!!$    use paras_num, only : errtpbound, maxittpbound
+!!$    use profile, only : psi1
+!!$    implicit none
+!!$
+!!$    real, intent(in) :: mub0
+!!$    integer, intent(out) :: istat
+!!$
+!!$    integer :: i1, typemid, ifound
+!!$    real :: pphileft, pphiright, pphimid, tpboundtmp
+!!$
+!!$    pphileft = - ei * psi1
+!!$    pphiright = 0.
+!!$    
+!!$    i1 = 1
+!!$    ifound = 0
+!!$    do while ((ifound .le. 0) .and. (i1 .le. maxittpbound))
+!!$       ! binary search
+!!$       pphimid = (pphileft + pphiright) / 2.
+!!$       tpboundtmp = tpbound(mub0, pphimid, typemid)
+!!$       write(*,*) pphimid / ei / psi1, typemid
+!!$       if (typemid .le. 0) then
+!!$          write(*,*) 'tpbound return error in type12tpbound'
+!!$          i1 = maxittpbound
+!!$          exit
+!!$       end if
+!!$
+!!$       if (abs((pphimid - pphileft)/pphimid) .le. errtpbound) then
+!!$          ! precision reached
+!!$          ifound = 1
+!!$       end if
+!!$       
+!!$       if (typemid .eq. 1) then
+!!$          pphileft = pphimid
+!!$       else
+!!$          pphiright = pphimid
+!!$       end if
+!!$          
+!!$       i1 = i1 + 1
+!!$       
+!!$    end do
+!!$
+!!$    if (ifound .le. 0) then
+!!$       write(*,*) 'type12tpbound failed'
+!!$       istat = -1
+!!$       type12tpbound = -100
+!!$    else
+!!$       type12tpbound = pphimid
+!!$    end if
+!!$    
+!!$  end function type12tpbound
+  
   real function stagedge(mub0, pphi, vsign, istat)
-    ! find the edge for stagnation paticles
+    ! find the edge for stagnation paticles (fixed pphi, output energy)
     ! vsign : =1 co-passing/trapped, =-1 ct-passing 
     ! istat : success(1), none(0), error(-1)
     use paras_phy
@@ -235,6 +310,97 @@ contains
     stagedge = stagedge * (1 + side * 1e-10)
   end function stagedge
 
+  real function stagedgepphi(mub0, ee, vsign, istat)
+    ! find the edge for stagnation paticles (fixed energy, output pphi)
+    ! vsign : =1 co-passing/trapped, =-1 ct-passing 
+    ! istat : success(1), none(0), error(-1)
+    use paras_phy
+    use paras_num
+    use profile
+    implicit none
+
+    real, intent(in) :: mub0, ee
+    integer, intent(in) :: vsign
+    integer, intent(out) :: istat
+
+    real :: r1, r2, det, vpar, f1, ddr, side, mub, Rbar
+    integer :: flagnotfound, i
+
+    if ((ee .le. mub0 * (1 - eps)) .and. (vsign .eq. 1)) then
+       ! no  particles E < mub0 (1-a/R0) if vsign == 1
+       stagedgepphi = -1.
+       istat = 0
+       return
+    else if ((ee .le. mub0) .and. (vsign .eq. -1)) then
+       ! no  particles E < mub0 if vsign == -1
+       stagedgepphi = -1.
+       istat = 0
+       return
+    end if
+    if ((vsign .ne. 1) .and. (vsign .ne. -1)) then
+       ! vsign must be 1 or -1
+       write(*,*) 'In stagedgephi : vsign must be 1 or -1'
+       stagedgepphi = -1.
+       istat = 0
+       return
+    end if
+
+    ! initial guess : r = 0 or 1
+    if (vsign .eq. 1) then
+       r1 = 1.
+    else
+       r1 = 0.
+    end if
+    flagnotfound = 0
+    i = 0
+    side = float(vsign)
+    ! Newton's methods
+    do while ((flagnotfound .eq. 0) .and. (i .le. maxittpbound))
+       f1 = rvt(r1, mub0, ee, vsign)
+       det = drvtdr(r1, mub0, ee, vsign)
+       if (det .eq. 0.) then
+          ! matrix singluar, search failed
+          write(*,*) 'singular matrix'
+          exit
+       end if
+       ddr = f1 / det
+       r2 = r1 - ddr
+       
+       if ((r2 .gt. 1.) .or. (r2 .le. 0.)) then
+          ! search failed
+          stagedgepphi = -1
+          istat = -1
+          return
+       end if
+    
+       if (abs(ddr/r2) .le. errtpbound) then
+          ! the boundary is found
+          flagnotfound = 1
+       end if
+       r1 = r2
+       i = i + 1
+    end do
+    if (flagnotfound .eq. 0) then
+       ! boundary not found
+       stagedgepphi = -1.
+       istat = -1
+       return
+    end if
+
+    mub = mub0 * (1 - r2 * eps * side)
+    Rbar = 1 + r2 * eps * side
+    vpar = sqrt((2*ee - 2*mub) / mi)
+    stagedgepphi = - ei * psi(r2) + mi * vpar * Rbar * R0 * side
+    istat = 1
+
+    ! slightly modify the energy to prevent ill-behaviour in numerics
+    if (stagedgepphi .le. 0) then
+       stagedgepphi = stagedgepphi * (1 + side * 1e-10)
+    else
+       stagedgepphi = stagedgepphi * (1 - side * 1e-10)
+    end if
+  end function stagedgepphi
+  
   real function traplost(mub0, pphi)
     ! find the trapped-confined/trapped-lost boundary
 
@@ -260,21 +426,109 @@ contains
 
   end function coplost
 
+  real function coplostpphi(mub0, ee)
+    ! find the cop lost pphi boundary for given mub0 and ee
+    
+    use paras_phy
+    use profile
+    implicit none
+
+    real, intent(in) :: mub0, ee
+    real :: pphiout
+    
+    pphiout = 2. * (ee - (mub0 * (1-eps))) * mi * R0**2 * (1+eps)**2
+    pphiout = sqrt(pphiout) - ei * psi1
+    coplostpphi = pphiout
+
+  end function coplostpphi
+    
   real function ctplost(mub0, pphi)
-    ! find the ct-passing-confined/lost boundary
+    ! find the ct-passing-confined/lost energy boundary for given pphi and mub0 
 
     use paras_phy
     use profile
     implicit none
 
-    real :: mub0, pphi, ee
+    real, intent(in) :: mub0, pphi
     real :: eeout
 
-    eeout = mub0 * (1 + eps) + (pphi + ei * psi(1.))**2/mi/2./R0**2/(1.-eps)**2
+    eeout = mub0 * (1 + eps) + (pphi + ei * psi1)**2/mi/2./R0**2/(1.-eps)**2
     ctplost = eeout
 
   end function ctplost
 
+  real function ctplostpphi(mub0, ee)
+    ! find the ctp lost boundary pphi for given energy and mub0
+    
+    use paras_phy
+    use profile
+    implicit none
+
+    real, intent(in) :: mub0, ee
+    real :: pphiout
+
+    pphiout = 2.* (ee - mub0 * (1+eps)) * mi * R0**2 * (1-eps)**2
+    pphiout = - sqrt(pphiout) - ei * psi1
+    ctplostpphi = pphiout
+
+  end function ctplostpphi
+
+    real function losttpbound(mub0, istat)
+    ! find the pphi value where tpbound crosses traplost
+    use paras_phy, only : ei
+    use paras_num, only : errtpbound, maxittpbound
+    use profile, only : psi1
+    implicit none
+
+    real, intent(in) :: mub0
+    integer, intent(out) :: istat
+
+    integer :: i1, typemid, ifound
+    real :: pphileft, pphiright, pphimid, tpboundtmp, losttmp
+
+    pphileft = - ei * psi1
+    pphiright = 0.
+    
+    i1 = 1
+    ifound = 0
+    do while ((ifound .le. 0) .and. (i1 .le. maxittpbound))
+       ! binary search
+       pphimid = (pphileft + pphiright) / 2.
+       tpboundtmp = tpbound(mub0, pphimid, typemid)
+       losttmp = traplost(mub0, pphimid)
+ 
+       if (typemid .le. 0) then
+          write(*,*) 'tpbound return error in type12tpbound'
+          i1 = maxittpbound
+          exit
+       end if
+
+       if (abs((pphimid - pphileft)/pphimid) .le. errtpbound) then
+          ! precision reached
+          ifound = 1
+       end if
+       
+       if (tpboundtmp .ge. losttmp) then
+          pphileft = pphimid
+       else
+          pphiright = pphimid
+       end if
+          
+       i1 = i1 + 1
+       
+    end do
+
+    if (ifound .le. 0) then
+       write(*,*) 'losttpbound failed'
+       istat = -1
+       losttpbound = -100
+    else
+       istat = 1
+       losttpbound = pphimid
+    end if
+    
+  end function losttpbound
+  
   real function eeonaxis(mub0, pphi)
     ! find the co-passing edge
 
@@ -355,4 +609,44 @@ contains
 
   end function d2fbrydrdy
 
+  real function rvt(r, mub0, ee, vsign)
+    ! R * r (dtheta/dt) given r, mub0, ee and sign of vpar
+    use paras_phy
+    use profile
+    implicit none
+    
+    real, intent(in) :: r, mub0, ee
+    integer, intent(in) :: vsign
+    real :: mub, Rbar, vpar, side
+    
+    side = float(vsign)
+    mub = mub0 * (1 - r * eps * side)
+    Rbar = 1 + r * eps * side
+    vpar = sqrt((2*ee - 2*mub) / mi)
+
+    rvt =  mi * vpar**2 + mub0 * Rbar
+    rvt = - rvt / ei / B0 * side  + side * a * r * vpar / q(r)
+  end function rvt
+
+  real function drvtdr(r, mub0, ee, vsign)
+    ! r derivative of rvt
+    use paras_phy
+    use profile
+    implicit none
+
+    real, intent(in) :: r, mub0, ee
+    integer, intent(in) :: vsign
+    real :: mub, Rbar, vpar, side
+    
+    side = float(vsign)
+    mub = mub0 * (1 - r * eps * side)
+    Rbar = 1 + r * eps * side
+    vpar = sqrt((2*ee - 2*mub) / mi)
+    
+    drvtdr = -3. * mub0 / B0 / ei / R0 
+    drvtdr = drvtdr + a * side * vpar * (1 - r * dqdr(r) / q(r)) / q(r)
+    drvtdr = drvtdr + a * r * eps * mub0 / mi / vpar / q(r)
+    
+  end function drvtdr
+    
 end module orbit_classify

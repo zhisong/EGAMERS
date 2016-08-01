@@ -129,8 +129,8 @@ contains
           iend1 = istart - 1
        end if
     else
-       istart1 = istart
-       iend1 = iend
+       istart1 = 1
+       iend1 = 1
     end if
        
        

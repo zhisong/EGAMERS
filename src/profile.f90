@@ -124,7 +124,7 @@ module profile
       d2psi = abltg(2)
       qq = 1. / 2. / dpsidr2 * B0 * a**2
 
-      dqdr = - 2.* r * qq**2 * d2psi  / (B0 * a**2)
+      dqdr = - 4.* r * qq**2 * d2psi  / (B0 * a**2)
       
     end function dqdr
 

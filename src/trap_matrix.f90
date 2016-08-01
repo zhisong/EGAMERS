@@ -256,7 +256,7 @@ contains
 
     results = (0., 0.)
     ! upper energy index limit of n grid 
-    iup = this%grid(imub0)%neen - 1
+    iup = this%grid(imub0)%periodn(ipphi)%n - 1
     ! A TYPE I t/p boundary?
     ltype1 = istype1(this%grid(imub0), ipphi)
     ! ignore the last grid point if there is a TYPE I t/p boundary
@@ -380,7 +380,7 @@ contains
 
     results = (0., 0.)
     ! upper energy index limit of n grid 
-    iup = this%grid(imub0)%neen 
+    iup = this%grid(imub0)%periodn(ipphi)%n
     ! A TYPE I t/p boundary?
     ltype1 = istype1(this%grid(imub0), ipphi)
     ! ignore the last grid point if there is a TYPE I t/p boundary
@@ -451,7 +451,7 @@ contains
     vpn = this%grid(imub0)%vpmgridn(n, p, ipphi)%y(ipos)
     vpm = this%grid(imub0)%vpmgridn(m, p, ipphi)%y(ipos)
     
-    if (ipos .eq. this%grid(imub0)%neen) then
+    if (ipos .eq. this%grid(imub0)%periodn(ipphi)%n) then
        dee = ee - this%grid(imub0)%periodn(ipphi)%x(ipos-1)
        vpnp = ((3. * this%grid(imub0)%vpmgridn(n, p, ipphi)%d(ipos-1) * dee) &
             + 2. * this%grid(imub0)%vpmgridn(n, p, ipphi)%c(ipos-1)) * dee &
