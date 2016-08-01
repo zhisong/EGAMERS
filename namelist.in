@@ -4,14 +4,14 @@
 
 ! WHAT TO DO IN THE CODE
 &RUNS
- IMODE           = 3,
+ IMODE           = 1,
  NEIGEN          = 1,
- OMEGAIN(1)      = (244760.542334162, 27653.8481392209),
+ OMEGAIN(1)      = (240894, 23691),
  VSIGN_IN        = 1,
- ENERGY_IN       = 1000,
+ ENERGY_IN       = 34.9,
  MUB0_IN         = 577.777777778,
- PPHI_IN         = -0.06,
- IENERGY_TPBOUND = 0,
+ PPHI_IN         = -0.35,
+ IENERGY_TPBOUND = -1,
  ENERGY_LOG_IN   = 20.,
  
 &END
@@ -27,20 +27,20 @@
  NORBITINTSAMPLE = 2000,
  DTORBITN        = 0.5,
  DTORBITB        = 0.2,
- ERREIG          = 1.E-4,
- NMAXIT          = 25,
+ ERREIG          = 1.E-5,
+ NMAXIT          = 30,
 &END
 
 ! GRID SEETINGS
 &GRID
  NRADIAL_GRID    = 30,
- NGTRAP_MUB0     = 10,
+ NGTRAP_MUB0     = 15,
  TRAP_MUB0START  = 50,
  TRAP_MUB0END    = 1000.,
- NGTRAP_ENERGYN  = 30,
- NGTRAP_ENERGYB  = 20,
+ NGTRAP_ENERGYN  = 15,
+ NGTRAP_ENERGYB  = 9,
  TRAP_EBEND      = 20.,
- NGTRAP_PPHI     = 30 
+ NGTRAP_PPHI     = 15 
 
 &END
 

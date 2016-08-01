@@ -537,7 +537,7 @@ contains
 
     type(tgrid) :: this
 
-    integer :: i1, i2, i3, i4
+    integer :: i1, i2, i3, i4, i5
     integer :: istat, ipos, imin, imax, istart, iend
     real :: lostbound, ee, dtorbit
     real, dimension(norbitintsample) :: r, theta
@@ -615,7 +615,7 @@ this%mub0/eunit, ee/eunit, ipos
           end if
        end do
     end do
-   
+
     ! calculate all the splines
     do i1 = 1, this%npphin
        call spline_build(this%periodn(i1), 0., 0., 2, 1, this%neen)

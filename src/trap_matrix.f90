@@ -73,7 +73,7 @@ contains
              do n = m, this%grid(i1)%ielementmax(i2)
                 do p = 1, this%grid(1)%np  
                    tmpmat%data(n, m) = tmpmat%data(n, m) &
-                        + getint(this, i1, i2,  omega, p, m, n) &
+                        + getintnormal(this, i1, i2,  omega, p, m, n) &
                         + getintnormal(this, i1, i2, -omega, p, m, n)
                 end do
                 tmpmat%data(m, n) = tmpmat%data(n, m)
@@ -304,6 +304,12 @@ contains
        pc(4) = this%grid(imub0)%periodn(ipphi)%a(i1)
        tmpres = landauint(c, pc, periodp, x1, x2)
        results = results + tmpres
+
+       if (tmpres .ne. tmpres) then
+          write(*,*) 'abort', imub0, ipphi, i1
+          getint = 0.
+          return
+       end if
     end do
     getint = results
 
@@ -354,7 +360,6 @@ contains
    
           tmpres = landauint(c, pc, periodp, 0., x2)
           results = results + tmpres
-
        end do
        getint = getint + results
     end if
