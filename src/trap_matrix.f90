@@ -71,16 +71,22 @@ contains
 
           do m = this%grid(i1)%ielementmin(i2), this%grid(i1)%ielementmax(i2)
              do n = m, this%grid(i1)%ielementmax(i2)
-                do p = 1, this%grid(1)%np  
-                   tmpmat%data(n, m) = tmpmat%data(n, m) &
-                        + getintnormal(this, i1, i2,  omega, p, m, n) &
-                        + getintnormal(this, i1, i2, -omega, p, m, n)
+                do p = 1, this%grid(1)%np
+                   if (this%grid(i1)%periodn(i2)%d(1) .eq. 0.) then
+                      ! fqc constant for given mub0 and pphi, get int will fail
+                      tmpmat%data(n, m) = tmpmat%data(n, m) &
+                           + getintnormal(this, i1, i2,  omega, p, m, n) &
+                           + getintnormal(this, i1, i2, -omega, p, m, n)
+                   else
+                      tmpmat%data(n, m) = tmpmat%data(n, m) &
+                           + getint(this, i1, i2,  omega, p, m, n) &
+                           + getintnormal(this, i1, i2, -omega, p, m, n)
+                   end if
                 end do
                 tmpmat%data(m, n) = tmpmat%data(n, m)
              end do
           end do
           
-
           if (i2 .eq. 1) then
              dpphi = this%grid(i1)%pphigrid(2) - this%grid(i1)%pphigrid(1)
              tmpmat2 = cmplx(-0.5*dpphi) * tmpmat
@@ -240,6 +246,7 @@ contains
     ! OUTPUT: the value of the integral
     
     use cubic, only : getcoeffs
+    use distribution_fun
     implicit none
 
     type(tmatrix), intent(in) :: this
@@ -251,12 +258,13 @@ contains
     integer :: i1, i2, iup, ipphib
     logical :: ltype1
     real, dimension(4) :: c, pc
+    real :: mub0, pphi, ee
     
     periodp = 2 * pi * real(p) / omega
 
     results = (0., 0.)
     ! upper energy index limit of n grid 
-    iup = this%grid(imub0)%neen - 1
+    iup = this%grid(imub0)%periodn(ipphi)%n - 1
     ! A TYPE I t/p boundary?
     ltype1 = istype1(this%grid(imub0), ipphi)
     ! ignore the last grid point if there is a TYPE I t/p boundary
@@ -303,6 +311,7 @@ contains
        pc(3) = this%grid(imub0)%periodn(ipphi)%b(i1)
        pc(4) = this%grid(imub0)%periodn(ipphi)%a(i1)
        tmpres = landauint(c, pc, periodp, x1, x2)
+
        results = results + tmpres
 
        if (tmpres .ne. tmpres) then
@@ -385,7 +394,7 @@ contains
 
     results = (0., 0.)
     ! upper energy index limit of n grid 
-    iup = this%grid(imub0)%neen 
+    iup = this%grid(imub0)%periodn(ipphi)%n
     ! A TYPE I t/p boundary?
     ltype1 = istype1(this%grid(imub0), ipphi)
     ! ignore the last grid point if there is a TYPE I t/p boundary
@@ -456,7 +465,7 @@ contains
     vpn = this%grid(imub0)%vpmgridn(n, p, ipphi)%y(ipos)
     vpm = this%grid(imub0)%vpmgridn(m, p, ipphi)%y(ipos)
     
-    if (ipos .eq. this%grid(imub0)%neen) then
+    if (ipos .eq. this%grid(imub0)%periodn(ipphi)%n) then
        dee = ee - this%grid(imub0)%periodn(ipphi)%x(ipos-1)
        vpnp = ((3. * this%grid(imub0)%vpmgridn(n, p, ipphi)%d(ipos-1) * dee) &
             + 2. * this%grid(imub0)%vpmgridn(n, p, ipphi)%c(ipos-1)) * dee &

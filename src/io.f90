@@ -118,15 +118,23 @@ contains
     implicit none
 
     type(tgrid), intent(in) :: this
-    integer :: i1, i2
+    integer :: i1, i2, ndee
+    real :: dee, ee
 
     write(iomap,*) this%npphin, this%neen
     
     do i1 = 1, this%npphin
-       do i2 = 1, this%neen
+       do i2 = 1, this%periodn(i1)%n
           write(iomap,*) this%pphigrid(i1)/ei/psi1, &
                this%periodn(i1)%x(i2)/eunit/1000., 2*pi/this%periodn(i1)%y(i2)
        end do
+       if (this%periodn(i1)%n .ne. this%periodn(1)%n) then
+          ndee = this%periodn(1)%n - this%periodn(i1)%n
+          do i2 = 1, ndee
+             write(iomap,*) this%pphigrid(i1)/ei/psi1, &
+                  this%periodn(i1)%x(this%periodn(i1)%n) /eunit/1000.,  2*pi/this%periodn(i1)%y(this%periodn(i1)%n)
+          end do
+       end if
     end do
 
   end subroutine plot_tgrid_map

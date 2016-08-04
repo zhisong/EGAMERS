@@ -32,8 +32,8 @@ module paras_num
   ! precision in finding trapped/passing boundary
   real, parameter :: errtpbound = 1e-12
   ! max iteration number in finding t/p boundary
-
-  real, parameter :: maxittpbound = 400
+  real, parameter :: maxittpbound = 1000
+  
   ! maximum number of orbit harmonics
   integer, parameter :: npmax = 5
   ! maximum number of finite elements
