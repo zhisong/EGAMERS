@@ -32,8 +32,8 @@ module paras_num
   ! precision in finding trapped/passing boundary
   real, parameter :: errtpbound = 1e-12
   ! max iteration number in finding t/p boundary
-
-  real, parameter :: maxittpbound = 400
+  real, parameter :: maxittpbound = 1000
+  
   ! maximum number of orbit harmonics
   integer, parameter :: npmax = 5
   ! maximum number of finite elements
@@ -42,7 +42,7 @@ module paras_num
   real, parameter :: ddx = 0.0001
   ! the min difference between trapedge and traplost energy to 
   ! take into account, in unit of mub0
-  real, parameter :: mindiff_el = 4e-4
+  real, parameter :: mindiff_el = 1e-4
 
   ! maximum grid points in a cubic spline interpolation
   integer, parameter :: nmaxspline = 1000
