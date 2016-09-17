@@ -15,7 +15,7 @@ module profile
   ! profile type : te, ti, ni, q
   integer :: ite_type = 1
   integer :: iti_type = 1
-  integer :: ini_type = 2
+  integer :: ini_type = 1
   integer ::  iq_type = 1
   !      i**_type == 1, polynomial (5th order)
   !               == 2, Gaussian (not used for q profile)
