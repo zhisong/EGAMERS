@@ -1,8 +1,8 @@
-FC = ifort
+FC = gfortran
 LIB = -lblas -llapack
 TARGET = ../egamers.exe
 OBJS =  paras_phy.o paras_num.o interfaces.o matrix_module.o sgtsl.o cubic.o spline_module.o profile.o distribution_fun.o sintable.o hermite.o landau_integral.o radial_grid.o orbit_classify.o orbit.o orbit_integral.o trap_grid.o trap_matrix.o mhd_matrix.o eigen.o nl.o io.o egamers.o
-FFLAGS = -r8
+FFLAGS = -fdefault-real-8 -O3
 
 all :   $(OBJS)
 	$(FC) ${FFLAGS} -o $(TARGET) $(MODULES) $(OBJS) $(LIB)
