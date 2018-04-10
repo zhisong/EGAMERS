@@ -1,0 +1,4 @@
+src/*.mod
+src/*.o
+*.exe
+*.out
