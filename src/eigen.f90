@@ -5,6 +5,7 @@ module eigen
   ! use Newton's method (inversed vector iteration) to iteratively
   ! find the eigenvalue and eigenvector around a given value
 
+  use mpi
   use matrix_module
   use mhd_matrix
   use trap_matrix
@@ -28,25 +29,28 @@ contains
     complex, intent(in) :: lambdain
     integer :: i1
 
-    lambda = lambdain
-    write(*,*) 'START ITERATION: OMEGA', real(sqrt(lambda)), 'GAMMA', imag(sqrt(lambda))
-    write(*,*)
-    call getmat1(mat1)
-    call getmat2(mat2)
+    if (mpi_is_master()) then
+       lambda = lambdain
+       write(*,*) 'START ITERATION: OMEGA', real(sqrt(lambda)), 'GAMMA', imag(sqrt(lambda))
+       write(*,*)
+       call getmat1(mat1)
+       call getmat2(mat2)
 
-    allocate(v(2*nelement - 2))
-    do i1 = 1, 2*nelement - 2
-       v(i1) = 1. / real(2*nelement - 2)
-    end do
+       allocate(v(2*nelement - 2))
+       do i1 = 1, 2*nelement - 2
+          v(i1) = 1. / real(2*nelement - 2)
+       end do
+    endif
+    
   end subroutine newton_init
     
   subroutine newton_cleanup()
     ! clean up the allocated objects
-
-    call matrix_destroy(mat1)
-    call matrix_destroy(mat2)
-    if (allocated(v)) deallocate(v)
-
+    if (mpi_is_master()) then
+       call matrix_destroy(mat1)
+       call matrix_destroy(mat2)
+       if (allocated(v)) deallocate(v)
+    endif
   end subroutine newton_cleanup
 
   subroutine newton_step()
@@ -62,14 +66,34 @@ contains
     integer :: i1, i2, i3, nele, info
     
     nele = 2*nelement - 2
+    
+    if (mpi_is_master()) then
+       ! create and copy to temporary work space
+       allocate(vwork(nele))
+       allocate(tpdotv(nele))
+       allocate(tdotv(nele))
+       allocate(pmat(nele))
+    end if
 
-    ! create and copy to temporary work space
-    allocate(vwork(nele))
-    allocate(tpdotv(nele))
-    allocate(tdotv(nele))
-    allocate(pmat(nele))
-
+    ! set dlambda to some very big number
+    dlambda = 1.e20
+    
     do i2 = 1, nmaxit
+
+       ! we need to sync before starting
+       ! (which is actually trivial because of bcast)
+       call mpi_sync()
+
+       ! first, we need to broadcast lambda
+       call mpi_bcast_scalar(lambda, 0)
+       
+       ! then broadcast the stop condition
+       call mpi_bcast_scalar(dlambda, 0)
+       
+       ! if precision is reached
+       if (dlambda .le. erreig) then
+          exit
+       end if
 
        if (i2 .eq. 2) then
           mat = mat1
@@ -81,6 +105,11 @@ contains
        else
           call getmat(lambda, mat, matprime)
        end if
+
+       !write(*,*) mpi_get_rank(), 'ok'
+       ! only cpu0 need to solve the matrices
+       if (.not. mpi_is_master()) cycle
+       
        ! solve the linear system T(n) * u(n+1) = T'(n) * v(n)
        ! by PLU decomposition of mat
 
@@ -126,22 +155,19 @@ contains
           write(*,*)
        end if
        call czcopy(nele, vwork, 1, v, 1) 
-       
-
-       ! if precision is reached
-       if (dlambda .le. erreig) then
-          exit
-       end if
 
     end do
     call matrix_destroy(mat)
     call matrix_destroy(matprime)
     call matrix_destroy(mat1)
     call matrix_destroy(matprime1)
-    deallocate(vwork)
-    deallocate(tdotv)
-    deallocate(tpdotv)
-    deallocate(pmat)
+
+    if (mpi_is_master()) then
+       deallocate(vwork)
+       deallocate(tdotv)
+       deallocate(tpdotv)
+       deallocate(pmat)
+    endif
 
   end subroutine newton_step
 
@@ -165,10 +191,12 @@ contains
     call getmat3trap(tm, omega , mat3trap )
     call getmat3trap(tm, omega1, mat3trap1)
 
-    mat = mat2 + mat3trap + (-lambdain) * mat1
-    matprime =  (1./dlambda) * mat3trap1 + (-1./dlambda) * mat3trap &
-         + (-1.,0.) * mat1
-
+    ! we only do it in master cpu
+    if (mpi_is_master()) then
+       mat = mat2 + mat3trap + (-lambdain) * mat1
+       matprime =  (1./dlambda) * mat3trap1 + (-1./dlambda) * mat3trap &
+            + (-1.,0.) * mat1
+    endif
 !!$    mat = mat2 + (-lambdain) * mat1
 !!$    matprime =  (-1.,0.) * mat1
     

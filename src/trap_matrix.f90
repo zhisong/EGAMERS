@@ -16,6 +16,7 @@ module trap_matrix
 !  getint            - get energy integral
 !
 
+  use mpi
   use paras_phy
   use distribution_fun
   use radial_grid, only : nelement
@@ -36,6 +37,9 @@ module trap_matrix
      
   end type tmatrix
 
+  ! workload allocation for parallel computing
+  type(workload), public :: lwork
+
   public :: tmatrix_init, tmatrix_calculate, tmatrix_destroy, getmat3trap, getint, getintnormal
 contains
   
@@ -45,7 +49,7 @@ contains
     ! OUTPUT: mat3
     use profile
     implicit none
-
+    
     type(tmatrix), intent(in) :: this
     complex, intent(in) :: omega
     type(matrix), intent(out) :: mat3
@@ -61,6 +65,10 @@ contains
     call matrix_init(tmpmat2,2*nelement-2, 2*nelement - 2)
     do i1 = 1, this%ngrid
        ! mub0 level
+
+       ! only do the allocated work
+       if (.not. mpi_is_my_work(lwork, i1)) cycle
+       
        ! clear the tmp matrix
        call matrix_clear(tmpmat2)
 
@@ -68,10 +76,10 @@ contains
           ! pphi level
           ! clear the tmp matrix
           call matrix_clear(tmpmat)
-
+          
           do m = this%grid(i1)%ielementmin(i2), this%grid(i1)%ielementmax(i2)
              do n = m, this%grid(i1)%ielementmax(i2)
-                do p = 1, this%grid(1)%np
+                do p = 1, this%grid(i1)%np
                    if (this%grid(i1)%periodn(i2)%d(1) .eq. 0.) then
                       ! fqc constant for given mub0 and pphi, get int will fail
                       tmpmat%data(n, m) = tmpmat%data(n, m) &
@@ -115,6 +123,12 @@ contains
 
     mat3 = cmplx(- nf_ratio * a**2 * ei * pi**2 / mi**2 / mib / R0 /B0) * mat3
 
+    !sum over all cpus
+    call matrix_clear(tmpmat2)
+    call mpi_sum_matrix(mat3, tmpmat2, 0)
+    ! transfer the data back to mat3
+    mat3 = tmpmat2
+    
     call matrix_destroy(tmpmat)
     call matrix_destroy(tmpmat2)
   end subroutine getmat3trap
@@ -137,7 +151,7 @@ contains
 
     real :: dmub0, mub0
     integer :: i1
-
+    
     ierr = 0
     ! check if the parameters are illegal
     if (ngrid .lt. 2) then
@@ -189,17 +203,24 @@ contains
        ierr = 1
        return
     endif
-
-    write(*,*) 'Initializing phase space grids ...'
-    write(*,*)
-
+    
+    ! allocate the workload for parallel computing
+    ! parallelizing over muB0 grid, total grid points : ngrid
+    call mpi_allocate_work(lwork, ngrid)
+    
     this%ngrid = ngrid
     dmub0 = (mub0end - mub0start) / real(ngrid - 1)
 
     allocate(this%grid(ngrid))
     do i1 = 1, ngrid
        mub0 = mub0start + dmub0 * real(i1-1)
-       call tgrid_init(this%grid(i1), mub0, npphin, neen, neeb, eeendb, np)
+
+       ! parallelizing over muB0 grid
+       ! only allocate the grid if the current cpu needs to
+       if (mpi_is_my_work(lwork, i1)) then
+          call tgrid_init(this%grid(i1), mub0, npphin, neen, neeb, eeendb, np)
+       endif
+       
     end do
 
   end subroutine tmatrix_init
@@ -212,7 +233,9 @@ contains
     integer :: i1
     
     do i1 = 1, this%ngrid
-       call tgrid_destroy(this%grid(i1))
+       if (mpi_is_my_work(lwork, i1)) then
+          call tgrid_destroy(this%grid(i1))
+       endif
     end do
   end subroutine tmatrix_destroy
 
@@ -225,16 +248,15 @@ contains
     type(tmatrix), intent(in) :: this
     integer :: i1
     
-    write(*,*) 'Calculating trapped particle period and element weights...'
-    
     do i1 = 1, this%ngrid
-       write(*,100) this%grid(i1)%mub0/eunit/1000., i1, this%ngrid
-       call tgrid_calculate(this%grid(i1))
+       ! only perfrom the work when the current cpu needs to
+       if (mpi_is_my_work(lwork, i1)) then
+          write(*,100) mpi_get_rank(), this%grid(i1)%mub0/eunit/1000., i1, this%ngrid
+          call tgrid_calculate(this%grid(i1))
+       end if
     end do
 
-    write(*,*)
-
-100 format('    mu B0 =', F8.1, 'keV, ', I4, ' of', I4)
+100 format('on cpu', I2, ': computing orbits for mu B0 =', F8.1, 'keV, ', I4, ' of', I4)
   end subroutine tmatrix_calculate
 
 ! ************ internal subroutines *************

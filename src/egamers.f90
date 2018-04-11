@@ -3,6 +3,7 @@
 
 program EGAMERS
 
+  use mpi
   use paras_phy, only : eunit, ei, paras_phy_init
   use paras_num, only : norbitintsample, dtorbitn
 !!$  use profile, only : psi1
@@ -17,7 +18,7 @@ program EGAMERS
   use eigen
   use orbit_classify, only : tpbound
   implicit none
-
+  
   integer, parameter :: nmax = 2000
   type(matrix) :: mat3
   type(tgrid) :: tg1
@@ -26,11 +27,22 @@ program EGAMERS
   real, dimension(:), allocatable :: rdata, thetadata
   real :: perioddata, ee, mub0, pphi, eetpbound
 
-  write(*,*)
-  write(*,*) '******** EGAM RADIAL STRUCTURE CODE (EGAMERS) ********'
-  write(*,*) '               Version May 2016'
-  write(*,*)
-
+  call mpi_start()
+  
+  if (mpi_is_master()) then
+     write(*,*)
+     write(*,*) '******** EGAM RADIAL STRUCTURE CODE (EGAMERS) ********'
+     write(*,*) '               Version May 2016'
+#ifdef MPI
+     write(*,*) '             MPI Version March 2018'
+     write(*,*) '******************************************************'
+     write(*,*) '   Number of cores used : ', mpi_get_ncpus()
+#else
+     write(*,*) '              Serialized version'
+     write(*,*) '******************************************************'
+#endif
+  endif
+     
   call readnamelist()
   call paras_phy_init()
   call profile_init()
@@ -45,13 +57,18 @@ program EGAMERS
           trap_mub0end*1000.*eunit, ngtrap_pphi, ngtrap_energyn, &
           ngtrap_energyb, trap_ebend, np_trap, ierr)
      call tmatrix_calculate(tm)
+
+     ! we'd better finish the previous step before iterating frequency
+     call mpi_sync()
      
      call newton_init(omegain(1)**2)
      call newton_step()
 
-     call printfield(v)
-     call plotcontinuum()
-
+     if (mpi_is_master()) then
+        call printfield(v)
+        call plotcontinuum()
+     endif
+     
      call newton_cleanup
 
      call tmatrix_destroy(tm)
@@ -62,98 +79,112 @@ program EGAMERS
      ! imode == 2
      ! Calculate the bounce frequency map for a given muB0
 
-     write(*,*) 'Frequency map mode'
-     write(*,*) 'muB0 = ', mub0_in, 'keV'
-     mub0 = mub0_in * 1000. * eunit
+     ! we don't need mpi for frequency map since it is quite fast
 
-     call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
-     call sintable_init(nmax, np_trap)
+     if (mpi_is_master()) then
+     
+        write(*,*) 'Frequency map mode'
+        write(*,*) 'muB0 = ', mub0_in, 'keV'
+        mub0 = mub0_in * 1000. * eunit
 
-     ! write header of the output file
-     call write_map_header()
+        call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
+        call sintable_init(nmax, np_trap)
 
-     ! calculate frequency for trap grid
-     call tgrid_init(tg1, mub0, ngtrap_pphi, ngtrap_energyn, &
-          ngtrap_energyb, trap_ebend, np_trap)
-     call tgrid_calculate(tg1)
-     ! output trap grid frequency
-     call plot_tgrid_map(tg1)
-     call tgrid_destroy(tg1)
+        ! write header of the output file
+        call write_map_header()
 
-     call close_map()
-     call rgrid_destroy()
-     call sintable_destroy()
+        ! calculate frequency for trap grid
+        call tgrid_init(tg1, mub0, ngtrap_pphi, ngtrap_energyn, &
+             ngtrap_energyb, trap_ebend, np_trap)
+        call tgrid_calculate(tg1)
+        ! output trap grid frequency
+        call plot_tgrid_map(tg1)
+        call tgrid_destroy(tg1)
+
+        call close_map()
+        call rgrid_destroy()
+        call sintable_destroy()
+     endif
 
   else if (imode .eq. 3) then
      ! imode == 3
      ! Calculate the orbit and its bounce frequency
      ! for a given (E, muB0, Pphi)
 
-     write(*,*) 'Orbit mode'
+     ! we don't need mpi for running a single orbit
 
-     mub0 = mub0_in * 1000. * eunit
-     pphi = pphi_in * psi1 * ei
+     if (mpi_is_master()) then
+        write(*,*) 'Orbit mode'
 
-     if (ienergy_tpbound .eq. 0) then
-        ee = energy_in * 1000. * eunit
-     else if (ienergy_tpbound .eq. -1 .or. ienergy_tpbound .eq. 1) then
-        if (pphi_in .ge. -1. .and. pphi_in .le. 0.) then
-           write(*,*) 'Orbit close to t/p boundary'
-           eetpbound = tpbound(mub0, pphi, ierr)
+        mub0 = mub0_in * 1000. * eunit
+        pphi = pphi_in * psi1 * ei
+
+        if (ienergy_tpbound .eq. 0) then
+           ee = energy_in * 1000. * eunit
+        else if (ienergy_tpbound .eq. -1 .or. ienergy_tpbound .eq. 1) then
+           if (pphi_in .ge. -1. .and. pphi_in .le. 0.) then
+              write(*,*) 'Orbit close to t/p boundary'
+              eetpbound = tpbound(mub0, pphi, ierr)
            
-           if (ierr .le. 0) then
-              write(*,*) 'Finding t/p boundary failed'
+              if (ierr .le. 0) then
+                 write(*,*) 'Finding t/p boundary failed'
+                 stop
+              end if
+           else
+              write(*,*) 'pphi_in must be between -1 and 0'
               stop
            end if
+           if (ienergy_tpbound .eq. -1) then
+              ee = eetpbound - mub0 * exp(-energy_log_in)
+           else
+              ee = eetpbound + mub0 * exp(-energy_log_in)
+           end if
         else
-           write(*,*) 'pphi_in must be between -1 and 0'
+           write(*,*) 'ienergy_bound must be -1, 0 or 1'
            stop
         end if
-        if (ienergy_tpbound .eq. -1) then
-           ee = eetpbound - mub0 * exp(-energy_log_in)
-        else
-           ee = eetpbound + mub0 * exp(-energy_log_in)
-        end if
-     else
-        write(*,*) 'ienergy_bound must be -1, 0 or 1'
-        stop
-     end if
-
-     write(*,*)
-     write(*,*) 'Energy       ', ee/1000./eunit, 'keV'
-     write(*,*) 'muB0         ', mub0_in,   'keV'
-     write(*,*) 'Pphi/(e psi1)', pphi_in
-     write(*,*)
-    
-     allocate(rdata(norbitintsample))
-     allocate(thetadata(norbitintsample))
-
-     call printorbittype(ee, mub0, pphi, vsign_in)
-
-     call getorbit(ee, mub0, pphi, norbitintsample, vsign_in, dtorbitn, &
-          rdata, thetadata, perioddata, ierr)
-     
-     if (ierr .eq. 1) then
-        call printorbit(norbitintsample, rdata, thetadata, perioddata)
+        
         write(*,*)
-        write(*,*) 'Omega bounce (rad/s)', 2. * pi / perioddata
-        write(*,*) 'Orbit frequency (Hz)', 1. / perioddata 
-     else if (ierr .eq. 2) then
-        write(*,*) 'Orbit lost'
-     else
-        write(*,*) 'Orbit does not exist'
-     end if
+        write(*,*) 'Energy       ', ee/1000./eunit, 'keV'
+        write(*,*) 'muB0         ', mub0_in,   'keV'
+        write(*,*) 'Pphi/(e psi1)', pphi_in
+        write(*,*)
+        
+        allocate(rdata(norbitintsample))
+        allocate(thetadata(norbitintsample))
+        
+        call printorbittype(ee, mub0, pphi, vsign_in)
 
-     deallocate(rdata)
-     deallocate(thetadata)
+        call getorbit(ee, mub0, pphi, norbitintsample, vsign_in, dtorbitn, &
+             rdata, thetadata, perioddata, ierr)
+        
+        if (ierr .eq. 1) then
+           call printorbit(norbitintsample, rdata, thetadata, perioddata)
+           write(*,*)
+           write(*,*) 'Omega bounce (rad/s)', 2. * pi / perioddata
+           write(*,*) 'Orbit frequency (Hz)', 1. / perioddata 
+        else if (ierr .eq. 2) then
+           write(*,*) 'Orbit lost'
+        else
+           write(*,*) 'Orbit does not exist'
+        end if
+
+        deallocate(rdata)
+        deallocate(thetadata)
+     endif
 
   else
      ! wrong input
-     write(*,*) 'Only imode = 1~3 are supported currently'
-     write(*,*) 'Please refer to io.f90 for more information'
-     write(*,*)
+     if (mpi_is_master()) then
+        write(*,*) 'Only imode = 1~3 are supported currently'
+        write(*,*) 'Please refer to io.f90 for more information'
+        write(*,*)
+     endif
   end if
 
+  ! MPI END
+  call mpi_end()
+  
   write(*,*) '******** CODE FINISHED ********'
 
 end program EGAMERS
