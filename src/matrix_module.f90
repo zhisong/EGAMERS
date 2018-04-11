@@ -11,8 +11,12 @@ module matrix_module
      complex, dimension(:,:), allocatable, public :: data
      integer, public :: ncol, nrow
 
-  end type matrix
+   contains
 
+     final :: matrix_destroy
+
+  end type matrix
+  
   interface operator(+)
      ! matrix adding
      module procedure matadd
