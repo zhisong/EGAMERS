@@ -242,16 +242,9 @@ contains
     complex, dimension(4,4) :: m
 
     nintegral = nmhdintegral
-
+    
     if (allocated(mat2%data)) call matrix_destroy(mat2)
     call matrix_init(mat2, 2*nelement-2, 2*nelement-2)
-
-    ! clear all the data
-    do i1 = 1, 2 * nelement-2
-       do i2 = 1, 2 * nelement-2  
-          mat2%data(i1,i2) = 0.
-       end do
-    end do
     
     ! for the first grid point, c1 is absent due to the boundary condition
     call getmhdint2(1, nintegral, m)

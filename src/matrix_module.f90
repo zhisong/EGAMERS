@@ -11,8 +11,12 @@ module matrix_module
      complex, dimension(:,:), allocatable, public :: data
      integer, public :: ncol, nrow
 
-  end type matrix
+   contains
 
+     final :: matrix_destroy
+
+  end type matrix
+  
   interface operator(+)
      ! matrix adding
      module procedure matadd
@@ -37,9 +41,11 @@ contains
     type(matrix), intent(out) :: m1
     type(matrix), intent(in) :: m2
 
-    call matrix_init(m1, m2%nrow, m2%ncol)
-    call czcopy(m2%nrow*m2%ncol, m2%data, 1, m1%data, 1)
-
+    if (allocated(m2%data)) then
+       
+       call matrix_init(m1, m2%nrow, m2%ncol)
+       call czcopy(m2%nrow*m2%ncol, m2%data, 1, m1%data, 1)
+    end if
   end subroutine matgivevalue
     
   function matadd(m1, m2) result(m3)
@@ -91,15 +97,31 @@ contains
     type(matrix) :: this
     integer, intent(in) :: nrow, ncol
     integer :: i1, i2
+    logical :: need_allocate
 
-    if ((nrow .gt. 0) .and. (ncol .gt. 0)) then
-       allocate(this%data(nrow, ncol))
-       this%ncol = ncol
-       this%nrow = nrow
-
-       call matrix_clear(this)
+    if (allocated(this%data)) then
+       if (this%nrow==nrow .and. this%ncol==ncol) then
+          ! do nothing
+          need_allocate = .false.
+          call matrix_clear(this)
+       else
+          call matrix_destroy(this)
+          need_allocate = .true.
+       end if
     else
-       write(*,*) 'MATRIX: nrow and ncol must be greater than 0'
+       need_allocate = .true.
+    end if
+
+    if (need_allocate) then
+       if ((nrow .gt. 0) .and. (ncol .gt. 0)) then
+          allocate(this%data(nrow, ncol))
+          this%ncol = ncol
+          this%nrow = nrow
+
+          call matrix_clear(this)
+       else
+          write(*,*) 'MATRIX: nrow and ncol must be greater than 0'
+       end if
     end if
 
   end subroutine matrix_init
@@ -121,11 +143,8 @@ contains
 
     if (.not. allocated(this%data)) return
 
-    do i1 = 1, this%ncol
-       do i2 = 1, this%nrow
-          this%data(i2,i1) = 0.
-       end do
-    end do
+    this%data(:,:) = 0.
+       
   end subroutine matrix_clear
 
 end module matrix_module
