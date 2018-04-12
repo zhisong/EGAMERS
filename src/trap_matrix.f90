@@ -34,11 +34,13 @@ module trap_matrix
      type(tgrid), allocatable, dimension(:), public :: grid
      ! number of mub0 grid
      integer, public :: ngrid
+     ! grid mub0 (keep a record because of MPI)
+     real, allocatable, dimension(:) :: mub0_table
      
   end type tmatrix
 
   ! workload allocation for parallel computing
-  type(workload), public :: lwork
+  type(workload) :: lwork
 
   public :: tmatrix_init, tmatrix_calculate, tmatrix_destroy, getmat3trap, getint, getintnormal
 contains
@@ -59,7 +61,6 @@ contains
     real :: dmub0, dpphi
     complex :: tmp
 
-    if (allocated(mat3%data)) call matrix_destroy(mat3)
     call matrix_init(mat3,   2*nelement-2, 2*nelement - 2)
     call matrix_init(tmpmat, 2*nelement-2, 2*nelement - 2)
     call matrix_init(tmpmat2,2*nelement-2, 2*nelement - 2)
@@ -107,18 +108,16 @@ contains
              tmpmat2 = cmplx(-0.5 * dpphi) * tmpmat + tmpmat2
           end if
        end do
-       
 
        if (i1 .eq. 1) then
-          dmub0 = this%grid(2)%mub0 - this%grid(1)%mub0
-          mat3 = cmplx(0.5*dmub0) * tmpmat2
+          dmub0 = this%mub0_table(2) - this%mub0_table(1)
+          call matrix_clear(mat3)
        else if (i1 .eq. this%ngrid) then
-          dmub0 = this%grid(i1)%mub0 - this%grid(i1-1)%mub0
-          mat3 = cmplx(0.5*dmub0) * tmpmat2 + mat3
+          dmub0 = this%mub0_table(i1) - this%mub0_table(i1-1)
        else
-          dmub0 = (this%grid(i1+1)%mub0 - this%grid(i1-1)%mub0)
-          mat3 = cmplx(0.5*dmub0) * tmpmat2 + mat3
+          dmub0 = this%mub0_table(i1+1) - this%mub0_table(i1-1)
        end if
+       mat3 = cmplx(0.5*dmub0) * tmpmat2 + mat3
     end do
 
     mat3 = cmplx(- nf_ratio * a**2 * ei * pi**2 / mi**2 / mib / R0 /B0) * mat3
@@ -131,6 +130,7 @@ contains
     
     call matrix_destroy(tmpmat)
     call matrix_destroy(tmpmat2)
+
   end subroutine getmat3trap
 
   subroutine tmatrix_init(this, ngrid, mub0start, mub0end, npphin, neen, neeb, eeendb, np, ierr)
@@ -212,9 +212,12 @@ contains
     dmub0 = (mub0end - mub0start) / real(ngrid - 1)
 
     allocate(this%grid(ngrid))
+    allocate(this%mub0_table(ngrid))
     do i1 = 1, ngrid
        mub0 = mub0start + dmub0 * real(i1-1)
-
+       ! fill in the mub0 table
+       this%mub0_table(i1) = mub0
+       
        ! parallelizing over muB0 grid
        ! only allocate the grid if the current cpu needs to
        if (mpi_is_my_work(lwork, i1)) then
@@ -231,6 +234,8 @@ contains
     
     type(tmatrix) :: this
     integer :: i1
+
+    if (allocated(this%mub0_table)) deallocate(this%mub0_table)
     
     do i1 = 1, this%ngrid
        if (mpi_is_my_work(lwork, i1)) then

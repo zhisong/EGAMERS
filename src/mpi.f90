@@ -203,7 +203,7 @@ contains
     nelement = size(mat_in%data)
  
 #ifdef MPI
-    call MPI_reduce(mat_in%data, mat_out%data, nelement, MPI_COMPLEX, &
+    call MPI_reduce(mat_in%data, mat_out%data, nelement, MPI_COMPLEX_TYPE, &
          MPI_SUM, root, MPI_COMM_WORLD, ierr)
     if (ierr>0 .and. mpi_is_master()) write(*,*) 'MPI_reduce failed'
 #else

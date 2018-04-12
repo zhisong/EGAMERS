@@ -95,6 +95,8 @@ contains
           exit
        end if
 
+       
+
        if (i2 .eq. 2) then
           mat = mat1
           matprime = matprime1
@@ -182,11 +184,11 @@ contains
     type(matrix), intent(out) :: mat, matprime
 
     type(matrix) :: mat3trap, mat3trap1
-    complex :: omega, omega1, dlambda
-
-    dlambda = real(dlambdapctg * lambdain)
+    complex :: omega, omega1, lambda_move
+    
+    lambda_move = real(dlambdapctg * lambdain)
     omega  = sqrt(lambdain)
-    omega1 = sqrt(lambda + dlambda)
+    omega1 = sqrt(lambda + lambda_move)
 
     call getmat3trap(tm, omega , mat3trap )
     call getmat3trap(tm, omega1, mat3trap1)
@@ -194,7 +196,7 @@ contains
     ! we only do it in master cpu
     if (mpi_is_master()) then
        mat = mat2 + mat3trap + (-lambdain) * mat1
-       matprime =  (1./dlambda) * mat3trap1 + (-1./dlambda) * mat3trap &
+       matprime =  (1./lambda_move) * mat3trap1 + (-1./lambda_move) * mat3trap &
             + (-1.,0.) * mat1
     endif
 !!$    mat = mat2 + (-lambdain) * mat1

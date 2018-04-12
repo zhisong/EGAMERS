@@ -103,6 +103,7 @@ contains
        if (this%nrow==nrow .and. this%ncol==ncol) then
           ! do nothing
           need_allocate = .false.
+          call matrix_clear(this)
        else
           call matrix_destroy(this)
           need_allocate = .true.

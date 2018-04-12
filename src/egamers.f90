@@ -184,7 +184,7 @@ program EGAMERS
 
   ! MPI END
   call mpi_end()
-  
-  write(*,*) '******** CODE FINISHED ********'
-
+  if (mpi_is_master()) then
+     write(*,*) '******** CODE FINISHED ********'
+  end if
 end program EGAMERS
