@@ -77,7 +77,7 @@ contains
        n = 1
        tmp = sqrt(r**2 - q**3)
        if (r .lt. 0.) tmp = - tmp
-       ca = - (r + tmp)**(1./3.)
+       ca = - sign(1.0, r+tmp) * abs(r + tmp)**(1./3.)
        if (ca .eq. 0.) then
           cb = 0.
        else
