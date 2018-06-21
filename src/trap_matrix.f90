@@ -344,7 +344,7 @@ contains
     getint = results
 
     ! integrate over b grid if there is any
-    if (ltype1 .and. 0 .eq. 1) then
+    if (ltype1) then
        results = 0.
        ipphib = indexn2b(this%grid(imub0), ipphi) 
        ! the value on the first grid point
@@ -556,6 +556,7 @@ contains
     y = vpm * vpn 
     ! chain rule for derivative
     yp = vpnp * vpm + vpmp * vpn
+
     yp = (yp - y) * df0  +  y * d2f0de2(ee, mub0, pphi) * ac
     yp = yp * ac
     y = y * df0 * ac
