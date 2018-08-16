@@ -157,6 +157,7 @@ module nl
   ! real    :: tpar0 = 100.        ! on axis parallel temp in keV (bi-Max)
   ! real    :: dpphi_tper = 0.5    ! tper width (bi-Max & Gaussian)
   ! real    :: dpphi_tpar = 0.5    ! tpar width (bi-Max & Gaussian)
+  ! real    :: r_peak = 0.0        ! the peak-r location of the fast ion distribution
 contains
 
 ! ////// INPUT //////
@@ -185,7 +186,7 @@ contains
          tepoly, tipoly, nipoly, qpoly, te_deltar, ti_deltar, ni_deltar
     ! fast particle distribution function
     namelist /FAST/ nf_ratio, dpphi_nf, dpphi_tper, dpphi_tpar, &
-         tper0, tpar0, Rres
+         tper0, tpar0, Rres, r_peak
 
     open(UNIT=ionamelist, FILE='namelist.in', ACTION='READ')
 

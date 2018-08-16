@@ -22,11 +22,24 @@ module distribution_fun
   
   ! density width in pphi
   real :: dpphi_nf = 0.2
+  ! density peak location
+  real :: r_peak = 0.0
+  ! the pphi for this peak
+  real :: pphi0
 
   ! ICRH resonance major radius and field strength
   real :: Rres = 2.8
 
 contains
+
+  subroutine distribution_fun_init()
+
+    implicit none
+
+    pphi0 = - ei * psi(r_peak)
+    write(*,*) pphi0
+
+  end subroutine distribution_fun_init
   
   real function f0(ee, mub0, pphi)
 
@@ -39,13 +52,13 @@ contains
     real :: nf, tper, tpar, cons, mubres, Bres
     
     Bres = B0 * R0 / Rres
-    nf = exp(pphi / ei / dpphi_nf / psi1)
+    nf = exp((pphi - pphi0) / ei / dpphi_nf / psi1)
     tper = tper0 * 1000. * eunit * exp(pphi / ei / dpphi_tper / psi1)
     tpar = tpar0 * 1000. * eunit * exp(pphi / ei / dpphi_tpar / psi1)
 
     cons = 2. * (mi / 2. / pi / tper)**(3./2.)
     mubres = mub0 / B0 * Bres
-    
+   
     f0 = cons * nf * exp(-mubres/tper - abs(ee-mubres)/tpar)
   end function f0
 
@@ -61,7 +74,7 @@ contains
     real :: nf, tper, tpar, cons, mubres, Bres
     
     Bres = B0 * R0 / Rres
-    nf = exp(pphi / ei / dpphi_nf / psi1)
+    nf = exp((pphi-pphi0) / ei / dpphi_nf / psi1)
     tper = tper0 * 1000. * eunit * exp(pphi / ei / dpphi_tper / psi1)
     tpar = tpar0 * 1000. * eunit * exp(pphi / ei / dpphi_tpar / psi1)
 
@@ -85,7 +98,7 @@ contains
     real :: nf, tper, tpar, cons, mubres, Bres
     
     Bres = B0 * R0 / Rres
-    nf = exp(pphi / ei / dpphi_nf / psi1)
+    nf = exp((pphi-pphi0) / ei / dpphi_nf / psi1)
     tper = tper0 * 1000. * eunit * exp(pphi / ei / dpphi_tper / psi1)
     tpar = tpar0 * 1000. * eunit * exp(pphi / ei / dpphi_tpar / psi1)
 

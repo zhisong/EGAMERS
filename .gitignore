@@ -1,4 +1,8 @@
 src/*.mod
 src/*.o
+src/*~
+testcase/*/*.out
+testcase/*/*~
+*~
 *.exe
 *.out

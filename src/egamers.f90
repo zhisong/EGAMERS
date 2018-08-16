@@ -8,6 +8,7 @@ program EGAMERS
   use paras_num, only : norbitintsample, dtorbitn
 !!$  use profile, only : psi1
   use profile
+  use distribution_fun, only: distribution_fun_init
   use orbit, only : getorbit
   use nl
   use io
@@ -46,6 +47,7 @@ program EGAMERS
   call readnamelist()
   call paras_phy_init()
   call profile_init()
+  call distribution_fun_init()
   
   if (imode .eq. 1) then
      ! imode == 1
