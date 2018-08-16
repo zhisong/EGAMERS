@@ -37,7 +37,6 @@ contains
     implicit none
 
     pphi0 = - ei * psi(r_peak)
-    write(*,*) pphi0
 
   end subroutine distribution_fun_init
   
