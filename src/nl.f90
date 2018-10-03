@@ -158,6 +158,19 @@ module nl
   ! real    :: dpphi_tper = 0.5    ! tper width (bi-Max & Gaussian)
   ! real    :: dpphi_tpar = 0.5    ! tpar width (bi-Max & Gaussian)
   ! real    :: r_peak = 0.0        ! the peak-r location of the fast ion distribution
+
+  ! //////// NAMELIST PIC ///////
+  ! namelist for PIC simulation
+  ! defined in module pic
+  ! integer :: nparticles = 100000   ! total number of particles (sum over all cpus)
+  ! integer :: ksteps = 10000        ! total number of steps
+  ! integer :: dt_adjust = 0         ! ==1:adjust dt according to the orbit frequencies (1/5 of maximum orbit fqc) ==0:no adjust
+  ! real    :: dt = 1e-6             ! time step (in seconds)
+  ! real    :: initampl = 1e-10      ! initial amplitute (max of random)
+  ! real    :: initampldt = 1e-5     ! initial time derivative of amplitute (max of random)
+  ! integer :: nstepsnap = 100       ! output inteval in steps
+  ! defined in module field
+  ! real    :: gamma_d = 0.0         ! the "ad-hoc" damping rate
 contains
 
 ! ////// INPUT //////
@@ -167,6 +180,8 @@ contains
     use paras_num
     use profile
     use distribution_fun
+    use field, only : gamma_d
+    use pic
     implicit none
 
     ! what to do in the code
@@ -187,15 +202,26 @@ contains
     ! fast particle distribution function
     namelist /FAST/ nf_ratio, dpphi_nf, dpphi_tper, dpphi_tpar, &
          tper0, tpar0, Rres, r_peak
-
+    ! PIC simulation parameters
+    namelist /PICS/ nparticles, dt, dt_adjust, ksteps, nstepsnap, initampl, initampldt, &
+         gamma_d
+    
     open(UNIT=ionamelist, FILE='namelist.in', ACTION='READ')
 
     read(ionamelist, nml = RUNS)
     read(ionamelist, nml = NUMS)
-    read(ionamelist, nml = GRID)
+    if (imode <= 2) then
+      read(ionamelist, nml = GRID)
+    end if
     read(ionamelist, nml = PHYS)
     read(ionamelist, nml = PROF)
-    read(ionamelist, nml = FAST)
+    
+    if (imode <= 1) then
+      read(ionamelist, nml = FAST)
+    end if
+    if (imode == 0) then
+      read(ionamelist, nml = PICS)
+    end if
 
     close(ionamelist)
 

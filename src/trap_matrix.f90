@@ -216,6 +216,7 @@ contains
 
     allocate(this%grid(ngrid))
     allocate(this%mub0_table(ngrid))
+    
     do i1 = 1, ngrid
        mub0 = mub0start + dmub0 * real(i1-1)
        ! fill in the mub0 table

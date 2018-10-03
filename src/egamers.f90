@@ -17,6 +17,7 @@ program EGAMERS
   use trap_matrix
   use trap_grid
   use eigen
+  use pic
   use orbit_classify, only : tpbound
   implicit none
   
@@ -50,14 +51,48 @@ program EGAMERS
   call distribution_fun_init()
   
   if (imode .eq. 0) then
+    ! imode == 0
+    ! Run PIC simulation
 
+    if (MOD(ngtrap_mub0, mpi_get_ncpus()) .ne. 0 ) then
+      if (mpi_is_master()) then 
+        write(*,*)
+        write(*,*) '######################################################'
+        write(*,*) 'WARNING: For good load balance, ngtrap_mub0 needs to be divisible by ncpus!'
+        write(*,*) '######################################################'
+        write(*,*)
+      end if
+    end if
+
+    call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
+    call sintable_init(nmax, np_trap)
+
+    call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
+                      trap_mub0end*1000.*eunit, ngtrap_pphi, ngtrap_energyn, &
+                      ngtrap_energyb, trap_ebend, np_trap, .false., ierr)
+    !call tmatrix_calculate(tm)
+
+    ! we'd better finish the previous steps before iterating frequency
+    call mpi_sync()
+
+    ! now we need to initialize the pic simulation
+    call pic_init()
+
+    do i1 = 1, 1
+      call pic_step()
+    end do
+
+    call pic_destroy()
+    call tmatrix_destroy(tm, .false.)
+    call rgrid_destroy()
+    call sintable_destroy()
 
   else if (imode .eq. 1) then
     ! imode == 1
     ! Run as an eigenvalue solver
     call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
     call sintable_init(nmax, np_trap)
-
+    
     call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
                       trap_mub0end*1000.*eunit, ngtrap_pphi, ngtrap_energyn, &
                       ngtrap_energyb, trap_ebend, np_trap, .false., ierr)

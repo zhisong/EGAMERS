@@ -461,7 +461,7 @@ contains
           do i4 = 1, this%np
              do i3 = 1, nele
                 call spline_init(this%vpmgridb(i3,i4,i1), neeb)
-                do i2 = 1, neen
+                do i2 = 1, this%periodb(i1)%n
                    this%vpmgridb(i3,i4,i1)%x(i2) = this%periodb(i1)%x(i2)
                 end do
              end do
