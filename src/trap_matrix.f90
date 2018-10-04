@@ -40,7 +40,7 @@ module trap_matrix
   end type tmatrix
 
   ! workload allocation for parallel computing
-  type(workload) :: lwork
+  type(workload), public :: lwork
 
   public :: tmatrix_init, tmatrix_calculate, tmatrix_destroy, &
             tmatrix_bcast, getmat3trap, getint, getintnormal

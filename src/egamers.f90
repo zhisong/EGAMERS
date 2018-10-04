@@ -82,7 +82,10 @@ program EGAMERS
     do i1 = 1, ksteps
       call pic_step()
       if (mpi_is_master()) then
-        if (MOD((i1-1), nsnapfield).eq.0 .or. i1.eq.ksteps) call io_snapshot_field(efield)
+        if (MOD((i1-1), nsnapfield).eq.0 .or. i1.eq.ksteps) then
+          call io_snapshot_field(efield)
+          write(*,*) 'ksteps = ', i1
+        end if
         !if (MOD((i1-1), nsnappart).eq.0 .or. i1.eq.ksteps) call io_snapshot_part()
       end if
     end do
