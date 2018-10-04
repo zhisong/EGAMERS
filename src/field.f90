@@ -33,12 +33,29 @@ contains
     implicit none
 
     type(field_vector) :: evector
-    logical, optional :: irandom
-    real, optional :: ampl, ampldt
+    logical, intent(in), optional :: irandom
+    real, intent(in), optional :: ampl, ampldt
 
-    if (.not. PRESENT(irandom)) irandom = .false.
-    if (.not. PRESENT(ampl)) ampl = 0.0
-    if (.not. PRESENT(ampldt)) ampldt = 0.0
+    logical :: iirandom
+    real :: aampl, aampldt
+
+    if (.not. PRESENT(irandom)) then
+        iirandom = .false.
+    else
+        iirandom = irandom
+    end if
+
+    if (.not. PRESENT(ampl)) then
+        aampl = 0.0
+    else
+        aampl = ampl
+    end if
+
+    if (.not. PRESENT(ampldt)) then
+        aampldt = 0.0
+    else
+        aampldt = ampldt
+    end if
 
     evector%nele = nele
     
@@ -46,12 +63,15 @@ contains
     allocate(evector%eta(nele))
 
     ! if we need to randomize the initial field
-    if (irandom) then
+    if (iirandom) then
       call get_rand(evector%lambda)
       call get_rand(evector%eta)
 
-      evector%lambda(:) = (evector%lambda(:) - 0.5) * 2.0 * ampl
-      evector%eta(:) = (evector%eta(:) - 0.5) * 2.0 * ampldt
+      evector%lambda(:) = (evector%lambda(:) - 0.5) * 2.0 * aampl
+      evector%eta(:) = (evector%eta(:) - 0.5) * 2.0 * aampldt
+
+      evector%lambda(:) = 1.0
+      evector%eta(:) = 0.0
     end if
 
   end subroutine
@@ -128,8 +148,8 @@ contains
     implicit none
     
     real, dimension(:), intent(in) :: vfast
-    type(field_vector), intent(in) :: evector
-    type(field_vector), intent(out):: dotevector
+    type(field_vector) :: evector
+    type(field_vector) :: dotevector
 
     integer :: info
 
@@ -138,11 +158,11 @@ contains
     ! compute the right hand side of M dot(eta) = - (N lambda + vfast)
     vwork = - MATMUL(mat2%data, evector%lambda) - vfast
     ! inverse the M matrix to get dot(eta) = -M^(-1) (N lambda + vfast)
-    call czgetrs('N', nele, 1, mat2%data, nele, pmat, vwork, nele, info)
+    call czgetrs('N', nele, 1, mat1_qr%data, nele, pmat, vwork, nele, info)
     if (info .ne. 0) then
        write(*,*) 'ERROR IN CZGETRS, INFO =', info
     end if 
-
+    
     ! compute dot(eta) and dot(lambda)
     dotevector%lambda(:) = evector%eta(:) - gamma_d * evector%lambda(:)
     dotevector%eta(:) = real(vwork(:))

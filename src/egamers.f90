@@ -77,11 +77,17 @@ program EGAMERS
 
     ! now we need to initialize the pic simulation
     call pic_init()
+    call io_snapshot_init()
 
-    do i1 = 1, 1
+    do i1 = 1, ksteps
       call pic_step()
+      if (mpi_is_master()) then
+        if (MOD((i1-1), nsnapfield).eq.0 .or. i1.eq.ksteps) call io_snapshot_field(efield)
+        !if (MOD((i1-1), nsnappart).eq.0 .or. i1.eq.ksteps) call io_snapshot_part()
+      end if
     end do
 
+    call io_snapshot_destroy()
     call pic_destroy()
     call tmatrix_destroy(tm, .false.)
     call rgrid_destroy()

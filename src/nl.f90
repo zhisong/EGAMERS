@@ -168,7 +168,8 @@ module nl
   ! real    :: dt = 1e-6             ! time step (in seconds)
   ! real    :: initampl = 1e-10      ! initial amplitute (max of random)
   ! real    :: initampldt = 1e-5     ! initial time derivative of amplitute (max of random)
-  ! integer :: nstepsnap = 100       ! output inteval in steps
+  ! integer, public :: nsnapfield = 100      ! field output inteval in steps
+  ! integer, public :: nsnappart  = 1000     ! particle output inteval in steps
   ! defined in module field
   ! real    :: gamma_d = 0.0         ! the "ad-hoc" damping rate
 contains
@@ -203,8 +204,8 @@ contains
     namelist /FAST/ nf_ratio, dpphi_nf, dpphi_tper, dpphi_tpar, &
          tper0, tpar0, Rres, r_peak
     ! PIC simulation parameters
-    namelist /PICS/ nparticles, dt, dt_adjust, ksteps, nstepsnap, initampl, initampldt, &
-         gamma_d
+    namelist /PICS/ nparticles, dt, dt_adjust, ksteps, initampl, initampldt, &
+         gamma_d, nsnappart, nsnapfield
     
     open(UNIT=ionamelist, FILE='namelist.in', ACTION='READ')
 
