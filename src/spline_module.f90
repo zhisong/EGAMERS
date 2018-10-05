@@ -507,7 +507,7 @@ contains
     IF (IEQ) THEN
        ! equal-distant
        DX = X(2) - X(1)
-       I = FLOOR(XWERT / DX) + 1
+       I = FLOOR((XWERT - X(1)) / DX) + 1
     ELSE
        I = 1
        K = N

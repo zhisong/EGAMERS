@@ -242,6 +242,9 @@ contains
     if ((m .le. 0) .or. (m .gt. nele)) ierr = 1
     if (ierr .ge. 1) return
 
+    ! save some computation time
+    if (m < this%ielementmin(ipphi) .or. m > this%ielementmax(ipphi)) return
+
     if (itype1 .ge. 1) then
        eelog = eetoeelog(this, ee, ipphi)
        getvpm = getvpmb1(this, eelog, ipphi, p, m)

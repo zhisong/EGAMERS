@@ -65,4 +65,8 @@ module paras_num
   ! maximum iteration in finding eigenvalue
   integer           :: nmaxit = 20
 
+  ! PIC simulation parameters
+  ! the default ratio of particles allocated to the t/p boundary special grid
+  real, parameter :: TP_RATIO_DEFAULT = 0.2
+
 end module paras_num

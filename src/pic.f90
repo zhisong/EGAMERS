@@ -13,9 +13,9 @@ implicit none
   type(field_vector), private :: dotefield, efieldsum, efieldorg
   type(field_vector), public :: efield
 
-  type(particle_container), allocatable, dimension(:), private :: dotgca, gcasum, gcaorg
-  type(particle_container), allocatable, dimension(:), public :: gca
-  type(particle_container_aux), allocatable, dimension(:), public :: gca_aux
+  type(particle_container), allocatable, dimension(:), private :: dotgc, gcsum, gcorg
+  type(particle_container), allocatable, dimension(:), public :: gc
+  type(particle_container_aux), allocatable, dimension(:), public :: gc_aux
 
   real, public :: t = 0.0      ! this is the time
   integer, public :: nmarkers   ! number of markers on each cpu
@@ -27,6 +27,7 @@ implicit none
   real, public    :: dt = 1e-6             ! time step (in seconds)
   real, public    :: initampl = 1e-10      ! initial amplitute (max of random)
   real, public    :: initampldt = 1e-5     ! initial time derivative of amplitute (max of random)
+  integer, public :: nscreen = 1000     ! screen output inteval in steps
   integer, public :: nsnapfield = 100      ! field output inteval in steps
   integer, public :: nsnappart  = 1000     ! particle output inteval in steps
 ! ////////////////////////////////
@@ -59,21 +60,24 @@ contains
     nmarkers = CEILING(float(nparticles) / float(tm%ngrid))
     nparticles = nmarkers * tm%ngrid
 
-    ! allocate gca_aux, gca, dotgca, gcasum and gcaorg
-    allocate(gca_aux(tm%ngrid))
-    allocate(gca(tm%ngrid))
-    allocate(dotgca(tm%ngrid))
-    allocate(gcasum(tm%ngrid))
-    allocate(gcaorg(tm%ngrid))
+    ! allocate gc_aux, gc, dotgc, gcsum and gcorg
+    allocate(gc_aux(tm%ngrid))
+    allocate(gc(tm%ngrid))
+    allocate(dotgc(tm%ngrid))
+    allocate(gcsum(tm%ngrid))
+    allocate(gcorg(tm%ngrid))
 
     do i1 = 1, tm%ngrid
       if (.not. mpi_is_my_work(lwork, i1)) cycle
       ! initialize all the particle containers
-      call particles_init(gca(i1), tm,  nmarkers)
-      call particles_init(dotgca(i1), tm, nmarkers)
-      call particles_init(gcasum(i1), tm, nmarkers)
-      call particles_init(gcaorg(i1), tm, nmarkers)
-      call particles_aux_init(gca_aux(i1), nmarkers)
+      call particles_init(gc(i1), nmarkers)
+      call particles_init(dotgc(i1), nmarkers)
+      call particles_init(gcsum(i1), nmarkers)
+      call particles_init(gcorg(i1), nmarkers)
+      call particles_aux_init(gc_aux(i1), nmarkers)
+
+      ! load the particles
+      call particles_loading_trap(gc(i1), gc_aux(i1), tm, i1, 0.2)
     end do
 
   end subroutine pic_init
@@ -95,11 +99,11 @@ contains
     do i1 = 1, tm%ngrid
       if (.not. mpi_is_my_work(lwork, i1)) cycle
       ! initialize all the particle containers
-      call particles_destroy(gca(i1))
-      call particles_destroy(dotgca(i1))
-      call particles_destroy(gcasum(i1))
-      call particles_destroy(gcaorg(i1))
-      call particles_aux_destroy(gca_aux(i1))
+      call particles_destroy(gc(i1))
+      call particles_destroy(dotgc(i1))
+      call particles_destroy(gcsum(i1))
+      call particles_destroy(gcorg(i1))
+      call particles_aux_destroy(gc_aux(i1))
     end do
 
   end subroutine pic_destroy
@@ -112,27 +116,29 @@ contains
     
     integer :: rkstep, i1
     real :: c0, c1
-    real, dimension(nele) :: vfast
+    real, dimension(nele) :: vfast, vfast1, vtemp
 
     vfast(:) = 0.0
+    vtemp(:) = 0.0
 
     do rkstep = 1, 4
 
-      vfast(:) = 0.0
+      vfast1(:) = 0.0
 
       ! evolve the particle
       do i1 = 1, tm%ngrid
 
         if (.not. mpi_is_my_work(lwork, i1)) cycle
 
-        !call paticles_push(dgca, gca)
+        call particles_push_trap(dotgc(i1), vtemp, gc(i1), gc_aux(i1), efield, tm, i1)
+        vfast1(:) = vfast1(:) + vtemp(:)
 
         if (rkstep.eq.1) then
           c0 = 1.0/6.0
           c1 = 0.5
       
-          gcasum(i1)%state(:,:) = gca(i1)%state(:,:)
-          gcaorg(i1)%state(:,:) = gca(i1)%state(:,:)
+          gcsum(i1)%state(:,:) = gc(i1)%state(:,:)
+          gcorg(i1)%state(:,:) = gc(i1)%state(:,:)
 
         else if(rkstep.eq.2)then
           c0 = 1.0/3.0
@@ -146,16 +152,19 @@ contains
         
         if(rkstep.ne.4)then
 
-          gcasum(i1)%state(:,:) = gcasum(i1)%state(:,:) + dt * c0 * dotgca(i1)%state(:,:)
-          gca(i1)%state(:,:) = gcaorg(i1)%state(:,:) + dt * c1 * dotgca(i1)%state(:,:)
+          gcsum(i1)%state(:,:) = gcsum(i1)%state(:,:) + dt * c0 * dotgc(i1)%state(:,:)
+          gc(i1)%state(:,:) = gcorg(i1)%state(:,:) + dt * c1 * dotgc(i1)%state(:,:)
           
         else
           
-          gca(i1)%state(:,:) = gcasum(i1)%state(:,:) + dt * c0 * dotgca(i1)%state(:,:)
+          gc(i1)%state(:,:) = gcsum(i1)%state(:,:) + dt * c0 * dotgc(i1)%state(:,:)
           
         end if
 
       end do
+
+      ! sum over vfast via mpi
+      call mpi_sum_vector(vfast1, vfast, 0)
 
       ! evolve the field at master node
       if (mpi_is_master()) then

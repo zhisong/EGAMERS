@@ -44,7 +44,10 @@ program EGAMERS
     write(*,*) '******************************************************'
 #endif
   endif
-     
+  
+  ! we want the title to show completely first
+  call mpi_sync()
+  
   call readnamelist()
   call paras_phy_init()
   call profile_init()
@@ -53,6 +56,7 @@ program EGAMERS
   if (imode .eq. 0) then
     ! imode == 0
     ! Run PIC simulation
+    if (mpi_is_master()) write(*,*) 'PIC simulation mode'
 
     if (MOD(ngtrap_mub0, mpi_get_ncpus()) .ne. 0 ) then
       if (mpi_is_master()) then 
@@ -70,23 +74,40 @@ program EGAMERS
     call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
                       trap_mub0end*1000.*eunit, ngtrap_pphi, ngtrap_energyn, &
                       ngtrap_energyb, trap_ebend, np_trap, .false., ierr)
-    !call tmatrix_calculate(tm)
+    call tmatrix_calculate(tm)
 
-    ! we'd better finish the previous steps before iterating frequency
+    ! we'd better finish the previous steps before starting simulation
     call mpi_sync()
+    
+    if (mpi_is_master()) write(*,*) 'Initializing PIC simulation...'
 
     ! now we need to initialize the pic simulation
     call pic_init()
     call io_snapshot_init()
+    call mpi_sync()
 
+    ! initial output
+    if (mpi_is_master()) then
+      write(*,*) 'Starting PIC simulation...'
+      write(*,*) 'ksteps = ', 0
+    end if
+    if (mpi_is_master() .and. nsnapfield > 0) call io_snapshot_field(efield)
+    !if (mpi_is_master() .and. nsnappart > 0) call io_snapshot_part()
+
+    ! run the simulation for ksteps
     do i1 = 1, ksteps
+      ! don't run for the last time step
       call pic_step()
+      ! mpi barrier after each time step
+      call mpi_sync()
+      ! output informations at particular time steps
       if (mpi_is_master()) then
-        if (MOD((i1-1), nsnapfield).eq.0 .or. i1.eq.ksteps) then
-          call io_snapshot_field(efield)
-          write(*,*) 'ksteps = ', i1
-        end if
-        !if (MOD((i1-1), nsnappart).eq.0 .or. i1.eq.ksteps) call io_snapshot_part()
+        ! screen output for every nscreen steps
+        if (MOD(i1, nscreen).eq.0 .or. i1.eq.ksteps) write(*,*) 'ksteps = ', i1
+        ! output the field for every nsnapfield steps
+        if (MOD(i1, nsnapfield).eq.0 .or. i1.eq.ksteps) call io_snapshot_field(efield)
+        ! output particles for every nsnappart steps
+        !if (MOD((i1), nsnappart).eq.0 .or. i1.eq.ksteps-1) call io_snapshot_part()
       end if
     end do
 
@@ -99,6 +120,8 @@ program EGAMERS
   else if (imode .eq. 1) then
     ! imode == 1
     ! Run as an eigenvalue solver
+    if (mpi_is_master()) write(*,*) 'Eigenvalue solver mode'
+
     call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
     call sintable_init(nmax, np_trap)
     

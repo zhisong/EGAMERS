@@ -70,8 +70,6 @@ contains
       evector%lambda(:) = (evector%lambda(:) - 0.5) * 2.0 * aampl
       evector%eta(:) = (evector%eta(:) - 0.5) * 2.0 * aampldt
 
-      evector%lambda(:) = 1.0
-      evector%eta(:) = 0.0
     end if
 
   end subroutine
@@ -164,8 +162,8 @@ contains
     end if 
     
     ! compute dot(eta) and dot(lambda)
-    dotevector%lambda(:) = evector%eta(:) - gamma_d * evector%lambda(:)
-    dotevector%eta(:) = real(vwork(:))
+    dotevector%lambda(:) = evector%eta(:) 
+    dotevector%eta(:) = real(vwork(:)) - gamma_d * evector%eta(:)
 
     end subroutine field_evolve
 end module field

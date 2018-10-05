@@ -26,7 +26,7 @@ module mpi
 
   public :: mpi_start, mpi_end, mpi_is_master, mpi_get_ncpus, mpi_get_rank, &
        mpi_sync, mpi_sum_matrix, mpi_allocate_work, mpi_is_my_work, mpi_whose_work, &
-       mpi_bcast_spline
+       mpi_bcast_spline, mpi_sum_vector
 
   interface mpi_bcast_scalar
      module procedure &
@@ -257,6 +257,26 @@ contains
   !**********************************
   ! MPI reduce wrapper
   !**********************************
+
+  subroutine mpi_sum_vector(vec_in, vec_out, root)
+
+    use matrix_module
+    implicit none
+   
+    real, dimension(:), intent(inout) :: vec_in, vec_out
+    integer, intent(in) :: root
+    integer :: nelement, ierr
+
+    nelement = size(vec_in)
+ 
+#ifdef MPI
+    call MPI_reduce(vec_in, vec_out, nelement, MPI_REAL_TYPE, &
+         MPI_SUM, root, MPI_COMM_WORLD, ierr)
+    if (ierr>0 .and. mpi_is_master()) write(*,*) 'MPI_reduce failed'
+#else
+    vec_out(:) = vec_in(:)
+#endif
+  end subroutine mpi_sum_vector
 
   ! summation over matrix
   subroutine mpi_sum_matrix(mat_in, mat_out, root)
