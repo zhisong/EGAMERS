@@ -174,8 +174,9 @@ contains
 
     ! if the required data point is out of range
     if (ierr .ge. 1) then
+      !write(*,*) ipphi
        prd = -1.
-       dprd = -1.
+       dprd(:) = -1.
        return
     end if
 
@@ -764,6 +765,7 @@ this%mub0/eunit, ee/eunit, ipos
     end if
     if (ee .lt. this%periodn(ipphi)%x(1)) then
        ! energy lower than trap edge, return error
+       !write(*,*) 'type 1 error', this%periodn(ipphi)%x(1), ee
        ierr = 1
        return
     end if
@@ -771,16 +773,18 @@ this%mub0/eunit, ee/eunit, ipos
        ! if a TYPE I t/p boundary is found for this pphi index
        if (ee .ge. this%etpbound(ipphi)) then
           ! energy higher than t/p boundary, return error
+          !write(*,*) 'type 2 error',this%etpbound(ipphi), ee
           ierr = 1
           return
        end if
-       if (ee .ge. this%periodn(ipphi)%x(this%neen-1)) then
+       if (ee .ge. this%periodn(ipphi)%x(this%periodn(ipphi)%n-1)) then
           ! sufficiently close to the t/p boundary
           gettgridtype = 1
        end if
     else
-       if (ee .ge. this%periodn(ipphi)%x(this%neen)) then
+       if (ee .ge. this%periodn(ipphi)%x(this%periodn(ipphi)%n)) then
           ! energy higher than the upper limit, return error
+          !write(*,*) 'type 3 error',this%etpbound(ipphi), ee
           ierr = 1
           return
        end if

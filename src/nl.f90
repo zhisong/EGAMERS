@@ -8,7 +8,7 @@ module nl
   integer, parameter :: ionamelist = 10  ! namelist file
 
   ! number of radial points put in the output
-  integer, parameter :: nfieldoutput = 1000
+  integer, parameter :: nfieldoutput = 100
 
   ! Input quantities
 

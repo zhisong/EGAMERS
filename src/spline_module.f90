@@ -262,7 +262,7 @@ contains
     type(spline), intent(in) :: this
     real, intent(in) :: xin
     real, dimension(3), intent(out):: abltg
-    
+    !if (xin < this%x(1) .or. xin > this%x(this%n)) write(*,*) "ERROR!!!", xin, this%x(1), this%x(this%n)
     spline_interp = SPWERT(this%n, xin, this%a, this%b, this%c, this%d, this%x, abltg, this%iequaldistant)
     
   end function spline_interp

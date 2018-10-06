@@ -1,7 +1,7 @@
 # COMPILER SELECTIONS
 # for Intel, use COMPILER = ifort
 # for gfortran, use COMPILER = gfortran
-COMPILER = ifort
+COMPILER = gfortran
 
 # MKL
 # compile with MKL, use MKL = yes

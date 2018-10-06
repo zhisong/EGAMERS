@@ -145,9 +145,9 @@ contains
 
     integer, dimension(:), allocatable :: neachpphin, neachpphib
     integer :: npartn, npartb
-    integer :: i1, i2, icounter, ntotalegrid, iup
+    integer :: i1, i2, icounter, ntotalegrid, iup, ipos
     real :: tp_ratio, ee, dee, weight
-    real :: dmub0, dpphi, period, omegab
+    real :: dmub0, dpphi, period, omegab, eelog
     real, dimension(3) :: dperiod
 
     if (PRESENT(tpbound_ratio)) then
@@ -225,7 +225,8 @@ contains
         gc_aux%active(icounter) = 1
         ! set the weight of the particle
         call getperiod(tm%grid(imub0), ee, i1, period, dperiod)
-        omegab = 2.0 * pi / period
+        if (period < 0) write(*,*) 'error1', imub0, i1, i2, ee, tm%grid(imub0)%periodn(i1)%x(1), &
+        tm%grid(imub0)%periodn(i1)%x(tm%grid(imub0)%periodn(i1)%n)
         weight =  (dmub0) * dpphi * dee * period
         gc_aux%weight(icounter) = weight 
 
@@ -239,25 +240,31 @@ contains
       ! now calculate the number of particles on each pphi (b)grid
       neachpphib(1:tm%grid(imub0)%npphib - 1) = FLOOR(float(npartb) / float(tm%grid(imub0)%npphib))
       neachpphib(tm%grid(imub0)%npphib) = npartb - SUM(neachpphib(1:tm%grid(imub0)%npphib - 1))
-      if (imub0 == 12) write(*,*) icounter, gc%n, tm%grid(imub0)%npphib
       do i1 = 1, tm%grid(imub0)%npphib
         iup = tm%grid(imub0)%periodb(i1)%n
         ! equdistant in log energy, let's ignore the two ends
-        dee = (tm%grid(imub0)%periodb(i1)%x(iup) - tm%grid(imub0)%periodb(i1)%x(1)) / float(neachpphib(i1) - 1)
+        dee = (tm%grid(imub0)%periodb(i1)%x(iup) - tm%grid(imub0)%periodb(i1)%x(1)) / float(neachpphib(i1) + 1)
         ! load particles
         do i2 = 1, neachpphib(i1)
           ! increase the counter
           icounter = icounter + 1
+          ! n index
+          ipos = indexb2n(tm%grid(imub0), i1)
           ! load the initial energy
-          gc%state(1,icounter) = eelogtoee(tm%grid(imub0), tm%grid(imub0)%periodb(i1)%x(1) + dee * float(i2), i1)
+          eelog = tm%grid(imub0)%periodb(i1)%x(1) + dee * float(i2)
+          ee = eelogtoee(tm%grid(imub0), eelog, ipos)
+          gc%state(1,icounter) = ee
           ! fill in the ipphi
-          gc_aux%grid_id(1, icounter) = indexb2n(tm%grid(imub0), i1)
+          gc_aux%grid_id(1, icounter) = ipos
           ! set to be on b grid
           gc_aux%grid_id(2, icounter) = 1
           ! set to be active
           gc_aux%active(icounter) = 1
           ! set the weight of the particle
-          weight = 0.0
+          call getperiod(tm%grid(imub0), ee, ipos, period, dperiod)
+          !if (period < 0) write(*,*) 'error2', imub0, i1, ipos, i2, ee, eelog, tm%grid(imub0)%periodn(ipos)%x(1), &
+          tm%grid(imub0)%etpbound(ipos)
+          weight =  (dmub0) * dpphi * period * (gc_aux%mub0 * exp(-eelog)) * dee 
           gc_aux%weight(icounter) = weight
         end do
       end do

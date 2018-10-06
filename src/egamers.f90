@@ -83,7 +83,7 @@ program EGAMERS
 
     ! now we need to initialize the pic simulation
     call pic_init()
-    call io_snapshot_init()
+    if (mpi_is_master()) call io_snapshot_init()
     call mpi_sync()
 
     ! initial output
@@ -111,7 +111,7 @@ program EGAMERS
       end if
     end do
 
-    call io_snapshot_destroy()
+    if (mpi_is_master()) call io_snapshot_destroy()
     call pic_destroy()
     call tmatrix_destroy(tm, .false.)
     call rgrid_destroy()

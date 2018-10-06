@@ -20,7 +20,7 @@ contains
   subroutine io_snapshot_init()
     ! initialize the snapshot files
     open(UNIT=iosnapfield, FILE='snapshot.field.out',ACTION='WRITE')
-    open(UNIT=iosnappart, FILE='snapshot.field.out',ACTION='WRITE')
+    open(UNIT=iosnappart, FILE='snapshot.part.out',ACTION='WRITE')
   end subroutine
 
   subroutine io_snapshot_destroy()
