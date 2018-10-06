@@ -114,7 +114,7 @@ contains
       dgc%state(3, i1) = - deedt * df0
 
       ! set dv
-      factor = nf_ratio * a**2  * ei / mi**2 / B0 / mib / R0 / (2.0 * pi)**2
+      factor = nf_ratio * a**2  / mi**2 / B0 / mib / R0 * omegab
       dv(:) = dv(:) + vwork(:) * gc%state(3, i1) * gc_aux%weight(i1) * factor
       
     end do
@@ -226,8 +226,9 @@ contains
         ! set the weight of the particle
         call getperiod(tm%grid(imub0), ee, i1, period, dperiod)
         omegab = 2.0 * pi / period
-        weight = (2.0 * pi)**3 * (dmub0) * dpphi * dee * omegab
+        weight =  (dmub0) * dpphi * dee * period
         gc_aux%weight(icounter) = weight 
+
       end do
     end do
 

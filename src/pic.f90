@@ -118,11 +118,9 @@ contains
     real :: c0, c1
     real, dimension(nele) :: vfast, vfast1, vtemp
 
-    vfast(:) = 0.0
-    vtemp(:) = 0.0
-
     do rkstep = 1, 4
-
+      vfast(:) = 0.0
+      vtemp(:) = 0.0
       vfast1(:) = 0.0
 
       ! evolve the particle
@@ -162,7 +160,6 @@ contains
         end if
 
       end do
-
       ! sum over vfast via mpi
       call mpi_sum_vector(vfast1, vfast, 0)
 
@@ -171,7 +168,6 @@ contains
 
         call field_evolve(dotefield, efield, vfast)
         
-
         if (rkstep.eq.1) then
           c0 = 1.0/6.0
           c1 = 0.5
@@ -206,8 +202,6 @@ contains
         end if
 
       end if
-
-      
 
       call field_vector_bcast(efield)
     enddo
