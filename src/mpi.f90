@@ -3,6 +3,7 @@
 #define MPI_REAL_TYPE MPI_REAL8
 #define MPI_COMPLEX_TYPE MPI_COMPLEX16
 #define MPI_INTEGER_TYPE MPI_INTEGER
+#define MPI_LOGICAL_TYPE MPI_LOGICAL
 #endif
 
 module mpi
@@ -24,19 +25,23 @@ module mpi
   integer :: ierror, tag !, status(MPI_STATUS_SIZE)
 
   public :: mpi_start, mpi_end, mpi_is_master, mpi_get_ncpus, mpi_get_rank, &
-       mpi_sync, mpi_sum_matrix, mpi_allocate_work, mpi_is_my_work
+       mpi_sync, mpi_sum_matrix, mpi_allocate_work, mpi_is_my_work, mpi_whose_work, &
+       mpi_bcast_spline, mpi_sum_vector
 
   interface mpi_bcast_scalar
      module procedure &
           mpi_bcast_scalar_integer, &
           mpi_bcast_scalar_real, &
-          mpi_bcast_scalar_complex
+          mpi_bcast_scalar_complex, &
+          mpi_bcast_scalar_logical
   end interface mpi_bcast_scalar
 
   interface mpi_bcast_array
      module procedure &
           mpi_bcast_array_real_1d, &
-          mpi_bcast_array_real_2d
+          mpi_bcast_array_real_2d, &
+          mpi_bcast_array_integer_1d, &
+          mpi_bcast_array_integer_2d
   end interface mpi_bcast_array
   
   public :: mpi_bcast_scalar, mpi_bcast_array
@@ -154,8 +159,22 @@ contains
     if (ierr > 0) write(*,*) 'MPI broadcasting error in cpu', rank
 #endif    
   end subroutine mpi_bcast_scalar_integer
+
+  ! Wrapper, broadcasting integer scalar
+  subroutine mpi_bcast_scalar_logical(data_in, root)
+
+    logical, intent(inout) :: data_in
+    integer, intent(in) :: root
+    integer :: ierr
+#ifdef MPI    
+    call MPI_BCAST(data_in, 1, MPI_LOGICAL_TYPE, root, MPI_COMM_WORLD, ierr)
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+    if (ierr > 0) write(*,*) 'MPI broadcasting error in cpu', rank
+#endif    
+  end subroutine mpi_bcast_scalar_logical
   
-  ! Wrapper, broadcasting real scalar
+  ! Wrapper, broadcasting real array
   subroutine mpi_bcast_array_real_1d(data_in, root)
 
     real, dimension(:), intent(inout) :: data_in
@@ -186,9 +205,78 @@ contains
 #endif    
   end subroutine mpi_bcast_array_real_2d
 
+    ! Wrapper, broadcasting integer array
+  subroutine mpi_bcast_array_integer_1d(data_in, root)
+
+    integer, dimension(:), intent(inout) :: data_in
+    integer, intent(in) :: root
+    integer :: ierr, nelements
+
+    nelements = size(data_in)
+#ifdef MPI    
+    call MPI_BCAST(data_in, nelements, MPI_INTEGER_TYPE, root, MPI_COMM_WORLD, ierr)
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+    if (ierr > 0) write(*,*) 'MPI broadcasting error in cpu', rank
+#endif    
+  end subroutine mpi_bcast_array_integer_1d
+
+  subroutine mpi_bcast_array_integer_2d(data_in, root)
+
+    integer, dimension(:,:), intent(inout) :: data_in
+    integer, intent(in) :: root
+    integer :: ierr, nelements
+
+    nelements = size(data_in)
+#ifdef MPI    
+    call MPI_BCAST(data_in, nelements, MPI_INTEGER_TYPE, root, MPI_COMM_WORLD, ierr)
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+    if (ierr > 0) write(*,*) 'MPI broadcasting error in cpu', rank
+#endif    
+  end subroutine mpi_bcast_array_integer_2d
+
+  subroutine mpi_bcast_spline(data_in, root)
+    ! broadcast the spline
+    use spline_module
+
+    type(spline) :: data_in
+    integer, intent(in) :: root
+    
+    call mpi_bcast_array_real_1d(data_in%a, root)
+    call mpi_bcast_array_real_1d(data_in%b, root)
+    call mpi_bcast_array_real_1d(data_in%c, root)
+    call mpi_bcast_array_real_1d(data_in%d, root)
+    call mpi_bcast_array_real_1d(data_in%x, root)
+    call mpi_bcast_array_real_1d(data_in%y, root)
+    call mpi_bcast_scalar_integer(data_in%n, root)
+    call mpi_bcast_scalar_logical(data_in%iequaldistant, root)
+
+  end subroutine mpi_bcast_spline
+
   !**********************************
   ! MPI reduce wrapper
   !**********************************
+
+  subroutine mpi_sum_vector(vec_in, vec_out, root)
+
+    use matrix_module
+    implicit none
+   
+    real, dimension(:), intent(inout) :: vec_in, vec_out
+    integer, intent(in) :: root
+    integer :: nelement, ierr
+
+    nelement = size(vec_in)
+ 
+#ifdef MPI
+    call MPI_reduce(vec_in, vec_out, nelement, MPI_REAL_TYPE, &
+         MPI_SUM, root, MPI_COMM_WORLD, ierr)
+    if (ierr>0 .and. mpi_is_master()) write(*,*) 'MPI_reduce failed'
+#else
+    vec_out(:) = vec_in(:)
+#endif
+  end subroutine mpi_sum_vector
 
   ! summation over matrix
   subroutine mpi_sum_matrix(mat_in, mat_out, root)
@@ -256,7 +344,7 @@ contains
     implicit none
 
     type(workload), intent(in) :: lwork
-    integer :: workid
+    integer,intent(in) :: workid
 
     logical :: mpi_is_my_work
     
@@ -269,5 +357,22 @@ contains
     if (workid > lwork%n_work .or. workid < 1) mpi_is_my_work = .false.
 
   end function mpi_is_my_work
+
+    ! query the worktable lwork to see if the current cpu should do the work with id=workid 
+  function mpi_whose_work(lwork, workid)
+
+    implicit none
+
+    type(workload), intent(in) :: lwork
+    integer, intent(in) :: workid
+    integer :: mpi_whose_work
+
+    if (workid > lwork%n_work .or. workid < 1) then
+      mpi_whose_work = -1
+    else
+      mpi_whose_work = lwork%work_table(workid)
+    end if
+
+  end function mpi_whose_work
   
 end module

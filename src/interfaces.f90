@@ -30,6 +30,7 @@ contains
     ! DCOPY from BLAS
     INTEGER, INTENT(IN) :: INCX,INCY,N
     REAL SX(*), SY(*)
+    EXTERNAL DCOPY
 
     CALL DCOPY(N, SX, INCX, SY, INCY)
   END SUBROUTINE SDCOPY
@@ -40,6 +41,7 @@ contains
     complex, intent(in) ::  ZA
     integer, intent(in) :: INCX,N
     complex ZX(*)
+    EXTERNAL ZSCAL
 
     CALL ZSCAL(N, ZA, ZX, INCX)
 
@@ -50,6 +52,7 @@ contains
     ! Y = X
     integer, intent(in) :: INCX,INCY,N
     complex SX(*), SY(*)
+    EXTERNAL ZCOPY
 
     CALL ZCOPY(N, SX, INCX, SY, INCY)
   END SUBROUTINE CZCOPY
@@ -60,6 +63,7 @@ contains
     complex, intent(in) ::  ZA
     integer, intent(in) ::  INCX,INCY,N
     COMPLEX ZX(*),ZY(*)
+    EXTERNAL ZAXPY
 
     CALL ZAXPY(N,ZA,ZX,INCX,ZY,INCY)
   END SUBROUTINE CZAXPY
@@ -72,6 +76,7 @@ contains
       CHARACTER, INTENT(IN) :: TRANS
 
       COMPLEX A(LDA,*),X(*),Y(*)
+      EXTERNAL ZGEMV
 
       CALL ZGEMV(TRANS,M,N,ALPHA,A,LDA,X,INCX,BETA,Y,INCY)
   END SUBROUTINE CZGEMV
@@ -84,6 +89,7 @@ contains
     INTEGER, INTENT(OUT) :: INFO
     INTEGER            IPIV( * )
     COMPLEX            A( LDA, * )
+    EXTERNAL  ZGETRF
 
     CALL ZGETRF( M, N, A, LDA, IPIV, INFO )
   END SUBROUTINE CZGETRF
@@ -97,6 +103,7 @@ contains
      INTEGER, INTENT(OUT) :: INFO
      INTEGER            IPIV( * )
      COMPLEX            A( LDA, * ), B( LDB, * )
+     EXTERNAL ZGETRS
 
      CALL ZGETRS( TRANS, N, NRHS, A, LDA, IPIV, B, LDB, INFO )
   END SUBROUTINE CZGETRS

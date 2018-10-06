@@ -10,10 +10,82 @@ module io
   integer, parameter :: iofqc      = 21  ! continuum and global mode fqc file
   integer, parameter :: iomap      = 22
   integer, parameter :: ioorbit    = 23  ! orbit file
+  integer, parameter :: iosnapfield= 24  ! field snapshot file
+  integer, parameter :: iosnappart = 25  ! particle snapshot file
   
 contains
   
 ! ////// OUTPUT //////  
+
+  subroutine io_snapshot_init()
+    ! initialize the snapshot files
+    open(UNIT=iosnapfield, FILE='snapshot.field.out',ACTION='WRITE')
+    open(UNIT=iosnappart, FILE='snapshot.part.out',ACTION='WRITE')
+  end subroutine
+
+  subroutine io_snapshot_destroy()
+    ! initialize the snapshot files
+    close(UNIT=iosnapfield)
+    close(UNIT=iosnappart)
+  end subroutine
+
+  subroutine io_snapshot_field(ev)
+    ! write the field to file
+    use field
+    use radial_grid
+    use hermite
+    implicit none
+    type(field_vector) :: ev
+
+    real, dimension(:), allocatable :: er
+    real :: dx, x
+    complex :: value
+    integer :: i1, i2
+
+    allocate(er(nfieldoutput))
+    er(:) = 0.0
+    dx = 1. / real(nfieldoutput - 1)
+    
+    do i1 = 1, nfieldoutput
+       x = dx * real(i1 - 1)
+       ! first grid point
+       er(i1) = ev%lambda(1) * c2(x, 0., -1., rgrid(1))
+       ! last grid point
+       er(i1) = er(i1) + ev%lambda(nele) * c2(x, 1., rgrid(nelement-1), 1.2) 
+
+       ! adding contribution from other grids
+       do i2 = 2, nelement - 1
+          er(i1) = er(i1) + ev%lambda(i2*2-2) * c1(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
+          er(i1) = er(i1) + ev%lambda(i2*2-1) * c2(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
+       end do
+       write(iosnapfield, '(E15.7)', ADVANCE="no") er(i1)
+    end do
+
+    write(iosnapfield, *)
+
+    er(:) = 0.0
+    dx = 1. / real(nfieldoutput - 1)
+    
+    do i1 = 1, nfieldoutput
+       x = dx * real(i1 - 1)
+       ! first grid point
+       er(i1) = ev%eta(1) * c2(x, 0., -1., rgrid(1))
+       ! last grid point
+       er(i1) = er(i1) + ev%eta(nele) * c2(x, 1., rgrid(nelement-1), 1.2) 
+
+       ! adding contribution from other grids
+       do i2 = 2, nelement - 1
+          er(i1) = er(i1) + ev%eta(i2*2-2) * c1(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
+          er(i1) = er(i1) + ev%eta(i2*2-1) * c2(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
+       end do
+       write(iosnapfield, '(E15.7)', ADVANCE="no") er(i1)
+    end do
+
+    write(iosnapfield, *)
+
+    if(ALLOCATED(er)) deallocate(er)
+  
+  end subroutine io_snapshot_field
 
   subroutine plotcontinuum()
     ! plot the bulk continuum and omega of the global mode

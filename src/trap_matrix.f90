@@ -19,7 +19,7 @@ module trap_matrix
   use mpi
   use paras_phy
   use distribution_fun
-  use radial_grid, only : nelement
+  use radial_grid, only : nelement, nele
   use trap_grid
   use matrix_module
   use landau_integral
@@ -40,9 +40,10 @@ module trap_matrix
   end type tmatrix
 
   ! workload allocation for parallel computing
-  type(workload) :: lwork
+  type(workload), public :: lwork
 
-  public :: tmatrix_init, tmatrix_calculate, tmatrix_destroy, getmat3trap, getint, getintnormal
+  public :: tmatrix_init, tmatrix_calculate, tmatrix_destroy, &
+            tmatrix_bcast, getmat3trap, getint, getintnormal
 contains
   
   subroutine getmat3trap(this, omega, mat3)
@@ -133,12 +134,13 @@ contains
 
   end subroutine getmat3trap
 
-  subroutine tmatrix_init(this, ngrid, mub0start, mub0end, npphin, neen, neeb, eeendb, np, ierr)
+  subroutine tmatrix_init(this, ngrid, mub0start, mub0end, npphin, neen, neeb, eeendb, np, ibroadcast, ierr)
     ! initiate the grid bundle, must call first
     ! INPUT : number of mub0 grid point, start and end points
     !         mub0, number of pphi grid, number of n energy grid,
     !         number of b energy grid, b grid upper limit,
     !         number of harmonics
+    !         ibroadcast - LOGICAL, if the periods and Vp need to be broadcasted to all nodes
 
     use sintable, only : sinpzeta
     use radial_grid
@@ -147,6 +149,7 @@ contains
     type(tmatrix) :: this
     integer, intent(in) :: ngrid, npphin, neen, neeb, np
     real, intent(in) :: mub0start, mub0end, eeendb
+    logical, intent(in) :: ibroadcast
     integer, intent(out) :: ierr
 
     real :: dmub0, mub0
@@ -213,6 +216,7 @@ contains
 
     allocate(this%grid(ngrid))
     allocate(this%mub0_table(ngrid))
+    
     do i1 = 1, ngrid
        mub0 = mub0start + dmub0 * real(i1-1)
        ! fill in the mub0 table
@@ -220,25 +224,68 @@ contains
        
        ! parallelizing over muB0 grid
        ! only allocate the grid if the current cpu needs to
-       if (mpi_is_my_work(lwork, i1)) then
+       if (mpi_is_my_work(lwork, i1) .or. ibroadcast) then
           call tgrid_init(this%grid(i1), mub0, npphin, neen, neeb, eeendb, np)
        endif
        
     end do
 
   end subroutine tmatrix_init
+  
+  subroutine tmatrix_bcast(this)
+    ! broadcast the matrics to all nodes
+    implicit none
 
-  subroutine tmatrix_destroy(this)
+    type (tmatrix) :: this
+    integer :: i1, i2 ,i3, i4, whose
+
+    do i1 = 1, this%ngrid
+      whose = mpi_whose_work(lwork, i1)
+      if (this%grid(i1)%npphin .le. 0) cycle ! no grid then skip
+      ! broadcast the n grids
+      do i2 = 1, this%grid(i1)%npphin
+        call mpi_bcast_spline(this%grid(i1)%periodn(i1), whose)
+        do i3 = 1, nele
+          do i4 = 1, this%grid(i1)%np
+             call mpi_bcast_spline(this%grid(i1)%vpmgridn(i3,i4,i1), whose)
+          end do
+        end do
+      end do
+
+      ! broadcast the p grids
+      do i2 = 1, this%grid(i1)%npphib
+        call mpi_bcast_spline(this%grid(i1)%periodb(i1), whose)
+        do i3 = 1, nele
+          do i4 = 1, this%grid(i1)%np
+             call mpi_bcast_spline(this%grid(i1)%vpmgridb(i3,i4,i1), whose)
+          end do
+        end do
+      end do
+
+      ! broadcast the max-min elements
+      call mpi_bcast_array(this%grid(i1)%ielementmaxn, whose)
+      call mpi_bcast_array(this%grid(i1)%ielementminn, whose)
+      call mpi_bcast_array(this%grid(i1)%ielementmaxb, whose)
+      call mpi_bcast_array(this%grid(i1)%ielementminb, whose)
+      call mpi_bcast_array(this%grid(i1)%ielementmax, whose)
+      call mpi_bcast_array(this%grid(i1)%ielementmin, whose)
+
+    end do
+  end subroutine tmatrix_bcast
+
+  subroutine tmatrix_destroy(this, ibroadcast)
     ! destroy all tgrids, must call before program ends
+    ! ibroadcast - LOGICAL, if to broadcast to all nodes
     implicit none
     
     type(tmatrix) :: this
+    logical, intent(in) :: ibroadcast
     integer :: i1
 
     if (allocated(this%mub0_table)) deallocate(this%mub0_table)
     
     do i1 = 1, this%ngrid
-       if (mpi_is_my_work(lwork, i1)) then
+       if (mpi_is_my_work(lwork, i1) .or. ibroadcast) then
           call tgrid_destroy(this%grid(i1))
        endif
     end do
