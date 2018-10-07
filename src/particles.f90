@@ -262,8 +262,6 @@ contains
           gc_aux%active(icounter) = 1
           ! set the weight of the particle
           call getperiod(tm%grid(imub0), ee, ipos, period, dperiod)
-          !if (period < 0) write(*,*) 'error2', imub0, i1, ipos, i2, ee, eelog, tm%grid(imub0)%periodn(ipos)%x(1), &
-          tm%grid(imub0)%etpbound(ipos)
           weight =  (dmub0) * dpphi * period * (gc_aux%mub0 * exp(-eelog)) * dee 
           gc_aux%weight(icounter) = weight
         end do
