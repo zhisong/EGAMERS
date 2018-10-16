@@ -24,7 +24,7 @@ program EGAMERS
   integer, parameter :: nmax = 2000
   type(matrix) :: mat3
   type(tgrid) :: tg1
-  integer :: ierr, i1, i2
+  integer :: ierr, i1, i2, n_active
 
   real, dimension(:), allocatable :: rdata, thetadata
   real :: perioddata, ee, mub0, pphi, eetpbound
@@ -101,9 +101,12 @@ program EGAMERS
       ! mpi barrier after each time step
       call mpi_sync()
       ! output informations at particular time steps
+      if (MOD(i1, nscreen).eq.0 .or. i1.eq.ksteps) n_active = pic_active_particles()
       if (mpi_is_master()) then
         ! screen output for every nscreen steps
-        if (MOD(i1, nscreen).eq.0 .or. i1.eq.ksteps) write(*,*) 'ksteps = ', i1
+        if (MOD(i1, nscreen).eq.0 .or. i1.eq.ksteps) then
+          write(*,*) 'ksteps = ', i1, ', active particles ', n_active
+        endif
         ! output the field for every nsnapfield steps
         if (MOD(i1, nsnapfield).eq.0 .or. i1.eq.ksteps) call io_snapshot_field(efield)
         ! output particles for every nsnappart steps

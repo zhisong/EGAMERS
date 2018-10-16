@@ -26,7 +26,7 @@ module mpi
 
   public :: mpi_start, mpi_end, mpi_is_master, mpi_get_ncpus, mpi_get_rank, &
        mpi_sync, mpi_sum_matrix, mpi_allocate_work, mpi_is_my_work, mpi_whose_work, &
-       mpi_bcast_spline, mpi_sum_vector
+       mpi_bcast_spline
 
   interface mpi_bcast_scalar
      module procedure &
@@ -43,8 +43,18 @@ module mpi
           mpi_bcast_array_integer_1d, &
           mpi_bcast_array_integer_2d
   end interface mpi_bcast_array
-  
-  public :: mpi_bcast_scalar, mpi_bcast_array
+
+  interface mpi_sum_scalar
+     module procedure &
+          mpi_sum_scalar_integer
+  end interface mpi_sum_scalar
+
+  interface mpi_sum_array
+     module procedure &
+          mpi_sum_array_real_1d
+  end interface mpi_sum_array
+
+  public :: mpi_sum_array, mpi_sum_scalar, mpi_bcast_scalar, mpi_bcast_array
   
 contains
 
@@ -258,7 +268,7 @@ contains
   ! MPI reduce wrapper
   !**********************************
 
-  subroutine mpi_sum_vector(vec_in, vec_out, root)
+  subroutine mpi_sum_array_real_1d(vec_in, vec_out, root)
 
     use matrix_module
     implicit none
@@ -276,7 +286,25 @@ contains
 #else
     vec_out(:) = vec_in(:)
 #endif
-  end subroutine mpi_sum_vector
+  end subroutine mpi_sum_array_real_1d
+
+  subroutine mpi_sum_scalar_integer(vec_in, vec_out, root)
+
+    use matrix_module
+    implicit none
+   
+    integer, intent(inout) :: vec_in, vec_out
+    integer, intent(in) :: root
+    integer :: nelement, ierr
+
+#ifdef MPI
+    call MPI_reduce(vec_in, vec_out, 1, MPI_INTEGER_TYPE, &
+         MPI_SUM, root, MPI_COMM_WORLD, ierr)
+    if (ierr>0 .and. mpi_is_master()) write(*,*) 'MPI_reduce failed'
+#else
+    vec_out = vec_in
+#endif
+  end subroutine mpi_sum_scalar_integer
 
   ! summation over matrix
   subroutine mpi_sum_matrix(mat_in, mat_out, root)

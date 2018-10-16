@@ -81,9 +81,9 @@ contains
       if (gc_aux%active(i1) <= 0) cycle
 
       ! shorthand
-      ee = gc%state(1, i1)
-      theta = gc%state(2, i1)
-      ipphi = gc_aux%grid_id(1, i1)
+      ee = gc%state(i1, 1)
+      theta = gc%state(i1, 2)
+      ipphi = gc_aux%grid_id(i1, 1)
 
       ! the period and omegab
       call getperiod(tm%grid(imub0), ee, ipphi, period, dperiod)
@@ -109,13 +109,13 @@ contains
       
       ! set dgc
       ! de/dt
-      dgc%state(1, i1) = deedt
-      dgc%state(2, i1) = omegab
-      dgc%state(3, i1) = - deedt * df0
+      dgc%state(i1, 1) = deedt
+      dgc%state(i1, 2) = omegab
+      dgc%state(i1, 3) = - deedt * df0
 
       ! set dv
       factor = nf_ratio * a**2  / mi**2 / B0 / mib / R0 * omegab
-      dv(:) = dv(:) + vwork(:) * gc%state(3, i1) * gc_aux%weight(i1) * factor
+      dv(:) = dv(:) + vwork(:) * gc%state(i1, 3) * gc_aux%weight(i1) * factor
       
     end do
 
@@ -216,11 +216,11 @@ contains
         icounter = icounter + 1
         ! load the initial energy
         ee = tm%grid(imub0)%periodn(i1)%x(1) + dee * float(i2)
-        gc%state(1,icounter) = ee
+        gc%state(icounter, 1) = ee
         ! fill in the ipphi
-        gc_aux%grid_id(1, icounter) = i1
+        gc_aux%grid_id(icounter, 1) = i1
         ! set to be on n grid
-        gc_aux%grid_id(2, icounter) = 0
+        gc_aux%grid_id(icounter, 2) = 0
         ! set to be active
         gc_aux%active(icounter) = 1
         ! set the weight of the particle
@@ -253,11 +253,11 @@ contains
           ! load the initial energy
           eelog = tm%grid(imub0)%periodb(i1)%x(1) + dee * float(i2)
           ee = eelogtoee(tm%grid(imub0), eelog, ipos)
-          gc%state(1,icounter) = ee
+          gc%state(icounter, 1) = ee
           ! fill in the ipphi
-          gc_aux%grid_id(1, icounter) = ipos
+          gc_aux%grid_id(icounter, 1) = ipos
           ! set to be on b grid
-          gc_aux%grid_id(2, icounter) = 1
+          gc_aux%grid_id(icounter, 2) = 1
           ! set to be active
           gc_aux%active(icounter) = 1
           ! set the weight of the particle
@@ -268,8 +268,10 @@ contains
       end do
     end if
     ! randomize the starting angle
-    call get_rand(gc%state(2,:)) 
-    gc%state(2,:) = gc%state(2,:) * 2.0 * pi
+    call get_rand(gc%state(:, 2)) 
+    gc%state(:, 2) = gc%state(:, 2) * 2.0 * pi
+    ! inital delta f is zero
+    gc%state(:, 3) = 0.0
 
     if (ALLOCATED(neachpphin)) deallocate(neachpphin)
     if (tm%grid(imub0)%npphib > 0 ) then
@@ -290,7 +292,7 @@ contains
     integer, intent(in) :: n
 
     this%n = n
-    allocate(this%state(NSTATE, n))
+    allocate(this%state(n, NSTATE))
 
   end subroutine particles_init
 
@@ -305,7 +307,7 @@ contains
     integer, intent(in) :: n
 
     this%n = n
-    allocate(this%grid_id(NGRID_ID, n))
+    allocate(this%grid_id(n, NGRID_ID))
     allocate(this%weight(n))
     allocate(this%active(n))
 
