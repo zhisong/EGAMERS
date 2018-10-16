@@ -163,7 +163,7 @@ contains
     
     ! compute dot(eta) and dot(lambda)
     dotevector%lambda(:) = evector%eta(:) 
-    dotevector%eta(:) = real(vwork(:)) - gamma_d * evector%eta(:)
+    dotevector%eta(:) = real(vwork(:)) - 2.0 * gamma_d * evector%eta(:)
 
     end subroutine field_evolve
 end module field
