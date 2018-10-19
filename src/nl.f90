@@ -106,6 +106,11 @@ module nl
   ! number of Pphi grid points for trapped particles
   integer :: ngtrap_pphi = 50
 
+  ! Pphi grid equidistant in pphi or r 
+  integer :: ipphi_eqdistant = 1
+  ! ipphi_eqdistant ==1 : equidistant in pphi
+  !                 ==2 : equidistant in r
+
   ! //////// NAMELIST PHYS ////////
   
   ! namelist memebers in module paras_phy
@@ -195,7 +200,7 @@ contains
          dtorbitn, dtorbitb, erreig, nmaxit
     ! grid settings
     namelist /GRID/ nradial_grid, ngtrap_mub0, trap_mub0start, trap_mub0end,&
-         ngtrap_energyn, ngtrap_energyb, trap_ebend, ngtrap_pphi
+         ngtrap_energyn, ngtrap_energyb, trap_ebend, ngtrap_pphi, ipphi_eqdistant
     ! physics settings
     namelist /PHYS/ af, zf, ai, R0, a, B0
     ! plasma equilibrium profiles

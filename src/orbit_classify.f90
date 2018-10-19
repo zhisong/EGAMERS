@@ -91,7 +91,7 @@ contains
        r1 = r2
        i = i + 1
     end do
-
+   
     if (flagnotfound .eq. 0) then
        ! t/p boundary not found, try TYPE II
        do j = 0, 3
@@ -136,7 +136,7 @@ contains
              ddr = f1 * b11 + f2 * b12
              ddy = f1 * b21 + f2 * b22
 
-             r1 = r1 - ddr
+             r1 = min(max(r1 - ddr, 0.0), 1.0)
              y1 = y1 - ddy
 
              if ((abs(ddr/r1) .le. errtpbound) .and. (abs(ddy/y1) .le. errtpbound)) then

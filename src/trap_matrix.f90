@@ -59,7 +59,7 @@ contains
 
     integer :: i1, i2, m, n, p
     type(matrix) :: tmpmat, tmpmat2
-    real :: dmub0, dpphi
+    real :: dmub0, dpphi, s
     complex :: tmp
 
     call matrix_init(mat3,   2*nelement-2, 2*nelement - 2)
@@ -97,17 +97,10 @@ contains
              end do
           end do
           
-          if (i2 .eq. 1) then
-             dpphi = this%grid(i1)%pphigrid(2) - this%grid(i1)%pphigrid(1)
-             tmpmat2 = cmplx(-0.5*dpphi) * tmpmat
-          else if (i2 .eq. this%grid(i1)%npphin) then
-             dpphi = this%grid(i1)%pphigrid(this%grid(i1)%npphin) & 
-                  - this%grid(i1)%pphigrid(this%grid(i1)%npphin-1)
-             tmpmat2 = cmplx(-0.5*dpphi) * tmpmat + tmpmat2
-          else
-             dpphi = this%grid(i1)%pphigrid(i2+1) - this%grid(i1)%pphigrid(i2-1)
-             tmpmat2 = cmplx(-0.5 * dpphi) * tmpmat + tmpmat2
-          end if
+          s = this%grid(i1)%s(i2) 
+          dpphi = abs(this%grid(i1)%ds * sgridds(s))
+          !write(*,*) s, dpphi
+          tmpmat2%data(:,:) = tmpmat2%data(:,:)+ cmplx(dpphi) * tmpmat%data(:,:)
        end do
 
        if (i1 .eq. 1) then
@@ -134,12 +127,13 @@ contains
 
   end subroutine getmat3trap
 
-  subroutine tmatrix_init(this, ngrid, mub0start, mub0end, npphin, neen, neeb, eeendb, np, ibroadcast, ierr)
+  subroutine tmatrix_init(this, ngrid, mub0start, mub0end, npphin, neen, neeb, eeendb, np, ieqdistant, ibroadcast, ierr)
     ! initiate the grid bundle, must call first
     ! INPUT : number of mub0 grid point, start and end points
     !         mub0, number of pphi grid, number of n energy grid,
     !         number of b energy grid, b grid upper limit,
     !         number of harmonics
+    !         ieqdistant : type of pphi equidistant grid
     !         ibroadcast - LOGICAL, if the periods and Vp need to be broadcasted to all nodes
 
     use sintable, only : sinpzeta
@@ -147,7 +141,7 @@ contains
     implicit none
     
     type(tmatrix) :: this
-    integer, intent(in) :: ngrid, npphin, neen, neeb, np
+    integer, intent(in) :: ngrid, npphin, neen, neeb, np, ieqdistant
     real, intent(in) :: mub0start, mub0end, eeendb
     logical, intent(in) :: ibroadcast
     integer, intent(out) :: ierr
@@ -225,7 +219,7 @@ contains
        ! parallelizing over muB0 grid
        ! only allocate the grid if the current cpu needs to
        if (mpi_is_my_work(lwork, i1) .or. ibroadcast) then
-          call tgrid_init(this%grid(i1), mub0, npphin, neen, neeb, eeendb, np)
+          call tgrid_init(this%grid(i1), mub0, npphin, neen, neeb, eeendb, np, ieqdistant)
        endif
        
     end do

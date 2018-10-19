@@ -62,7 +62,7 @@ module trap_grid
      integer, public :: iloststart
      
      ! pphi grid
-     real, dimension(:), allocatable, public :: pphigrid
+     real, dimension(:), allocatable, public :: pphigrid, s
      ! pphi grid start and end
      real, public :: pphistart, pphiend
      integer, public :: ipphistart, ipphiend
@@ -81,13 +81,18 @@ module trap_grid
      ! harmonic count
      integer, public :: np
 
+     ! the step in s
+     real, public :: ds
+
 
   end type tgrid
 
   private
+    integer :: ipphi_eqdistant;
+
   public :: tgrid_init, tgrid_destroy, tgrid_calculate, sgrid, getperiod, &
        getperiodb, findperiod, getvpm, getvpmb, istype1, indexn2b, indexb2n, &
-       eetoeelog, eelogtoee
+       eetoeelog, eelogtoee, sgridds
 
 contains
 
@@ -237,7 +242,7 @@ contains
 
     ! check if the inputs are illegal, and to use n or b grid
     itype1 = gettgridtype(this, ee, ipphi, ierr)
-    if ((p .le. 0) .and. (p .ge. this%np)) then
+    if ((p .le. 0) .or. (p .gt. this%np)) then
        ierr = 1
     end if
     if ((m .le. 0) .or. (m .gt. nele)) ierr = 1
@@ -284,7 +289,7 @@ contains
 
   end function getvpmb
 
-  subroutine tgrid_init(this, mub0, npphin, neen, neeb, eeendb, np)
+  subroutine tgrid_init(this, mub0, npphin, neen, neeb, eeendb, np, ieqdistant)
     ! initiate the object, create the grid
     ! INPUT : mub0, number of pphi grid, number of n energy grid,
     !         number of b energy grid, b grid upper limit,
@@ -296,7 +301,7 @@ contains
     
     type(tgrid) :: this
     real, intent(in):: mub0, eeendb
-    integer, intent(in) :: npphin, neen, neeb, np
+    integer, intent(in) :: npphin, neen, neeb, np, ieqdistant
     
     real :: ds, traplosttmp, trapedgetmp, dee, eestartb
     integer :: i1, i2, i3, i4, i5, ipos, negrid
@@ -306,9 +311,11 @@ contains
     this%np = np
     this%neen = neen
     this%neeb = neeb
+    ipphi_eqdistant = ieqdistant
 
     ! size of the grid, in unit of s flux label
     ds = 1. / real(npphin + 1)
+    this%ds = ds
     i1 = 1
     i2 = npphin
     trapedgetmp = stagedge(mub0, sgrid(ds * real(i1)), 1, istat)
@@ -343,11 +350,13 @@ contains
        allocate(this%etpbound(this%npphin))
        allocate(this%etrapedge(this%npphin))
        allocate(this%elost(this%npphin))
+       allocate(this%s(this%npphin))
        this%ibstart = 0
        this%iloststart = i2
        do i3 = 1, this%npphin
           ipos = i1 + i3 - 1
           this%pphigrid(i3) =  sgrid(ds * real(ipos))
+          this%s(i3) = ds * real(ipos)
 
           ! calculate the t/p boundary
           this%etpbound(i3) = tpbound(mub0, this%pphigrid(i3), istat)
@@ -395,7 +404,6 @@ contains
        allocate(this%ielementmaxn(this%neen, this%npphin))
        allocate(this%ielementminb(this%neeb, this%npphib))
        allocate(this%ielementmaxb(this%neeb, this%npphib))
-
        this%np = np
        ! fill in energy grid
        do i3 = 1, this%npphin
@@ -533,6 +541,7 @@ contains
     if (allocated(this%ielementmaxb)) deallocate(this%ielementmaxb)
     if (allocated(this%enbswitch)) deallocate(this%enbswitch)
     if (allocated(this%pphigrid)) deallocate(this%pphigrid)
+    if (allocated(this%s)) deallocate(this%s)
     if (allocated(this%etpbound)) deallocate(this%etpbound)
     if (allocated(this%etrapedge)) deallocate(this%etrapedge)
 
@@ -784,7 +793,7 @@ this%mub0/eunit, ee/eunit, ipos
     else
        if (ee .ge. this%periodn(ipphi)%x(this%periodn(ipphi)%n)) then
           ! energy higher than the upper limit, return error
-          !write(*,*) 'type 3 error',this%etpbound(ipphi), ee
+          !write(*,*) 'type 3 error',this%periodn(ipphi)%x(this%periodn(ipphi)%n), ee
           ierr = 1
           return
        end if
@@ -836,12 +845,31 @@ this%mub0/eunit, ee/eunit, ipos
   real function sgrid(s)
     ! define the pphi grid
     use paras_phy, only : ei
-    use profile, only : psi1
+    use profile, only : psi1, psi
+    implicit none
+    real, intent(in) :: s
+    
+    if (ipphi_eqdistant .eq. 1) then
+      sgrid = -ei * s * psi1
+    elseif (ipphi_eqdistant .eq. 2) then
+      sgrid = -ei * psi(s)
+    endif
+
+  end function sgrid
+
+  real function sgridds(s)
+    ! define the derivative of ds
+    use paras_phy, only : R0, ei, B0, a
+    use profile, only : q, psi1
     implicit none
     real, intent(in) :: s
 
-    sgrid = -ei * psi1 * s
-  end function sgrid
+    if (ipphi_eqdistant .eq. 1) then
+      sgridds = -ei * psi1
+    elseif (ipphi_eqdistant .eq. 2) then
+      sgridds = -ei * B0 * a**2 * s / q(s)
+    endif
+  end function sgridds
   
   subroutine findstartendn(this, ielement, ipphi, istart, iend)
     ! find the start and end energy grid index for element i

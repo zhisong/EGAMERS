@@ -73,7 +73,7 @@ program EGAMERS
 
     call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
                       trap_mub0end*1000.*eunit, ngtrap_pphi, ngtrap_energyn, &
-                      ngtrap_energyb, trap_ebend, np_trap, .false., ierr)
+                      ngtrap_energyb, trap_ebend, np_trap, ipphi_eqdistant, .false., ierr)
     call tmatrix_calculate(tm)
 
     ! we'd better finish the previous steps before starting simulation
@@ -130,7 +130,7 @@ program EGAMERS
     
     call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
                       trap_mub0end*1000.*eunit, ngtrap_pphi, ngtrap_energyn, &
-                      ngtrap_energyb, trap_ebend, np_trap, .false., ierr)
+                      ngtrap_energyb, trap_ebend, np_trap, ipphi_eqdistant, .false., ierr)
     call tmatrix_calculate(tm)
 
     ! we'd better finish the previous step before iterating frequency
@@ -170,7 +170,7 @@ program EGAMERS
 
       ! calculate frequency for trap grid
       call tgrid_init(tg1, mub0, ngtrap_pphi, ngtrap_energyn, &
-                      ngtrap_energyb, trap_ebend, np_trap)
+                      ngtrap_energyb, trap_ebend, np_trap, ipphi_eqdistant)
       call tgrid_calculate(tg1)
       ! output trap grid frequency
       call plot_tgrid_map(tg1)
