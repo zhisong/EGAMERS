@@ -37,6 +37,7 @@ program EGAMERS
     write(*,*) '               Version May 2016'
 #ifdef MPI
     write(*,*) '             MPI Version March 2018'
+    write(*,*) '            PIC Version October 2018'
     write(*,*) '******************************************************'
     write(*,*) '   Number of cores used : ', mpi_get_ncpus()
 #else

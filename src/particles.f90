@@ -146,7 +146,7 @@ contains
     integer, dimension(:), allocatable :: neachpphin, neachpphib
     integer :: npartn, npartb
     integer :: i1, i2, icounter, ntotalegrid, iup, ipos
-    real :: tp_ratio, ee, dee, weight
+    real :: tp_ratio, ee, dee, weight, s
     real :: dmub0, dpphi, period, omegab, eelog
     real, dimension(3) :: dperiod
 
@@ -165,7 +165,6 @@ contains
     gc_aux%imub0 = imub0
     ! calculate the grid size
     dmub0 = abs(tm%mub0_table(2) - tm%mub0_table(1))
-    dpphi = abs(tm%grid(imub0)%pphigrid(2) -  tm%grid(imub0)%pphigrid(1))
     ! clear the particle counter
     icounter = 0
 
@@ -209,6 +208,9 @@ contains
       end if
       ! equdistant in energy, let's ignore the two ends
       dee = (tm%grid(imub0)%periodn(i1)%x(iup) - tm%grid(imub0)%periodn(i1)%x(1)) / float(neachpphin(i1) + 1)
+      ! calculate dpphi
+      s = tm%grid(imub0)%s(i1) 
+      dpphi = abs(tm%grid(imub0)%ds * sgridds(s))
 
       ! load particles
       do i2 = 1, neachpphin(i1)
@@ -225,8 +227,6 @@ contains
         gc_aux%active(icounter) = 1
         ! set the weight of the particle
         call getperiod(tm%grid(imub0), ee, i1, period, dperiod)
-        if (period < 0) write(*,*) 'error1', imub0, i1, i2, ee, tm%grid(imub0)%periodn(i1)%x(1), &
-        tm%grid(imub0)%periodn(i1)%x(tm%grid(imub0)%periodn(i1)%n)
         weight =  (dmub0) * dpphi * dee * period
         gc_aux%weight(icounter) = weight 
 
@@ -244,6 +244,9 @@ contains
         iup = tm%grid(imub0)%periodb(i1)%n
         ! equdistant in log energy, let's ignore the two ends
         dee = (tm%grid(imub0)%periodb(i1)%x(iup) - tm%grid(imub0)%periodb(i1)%x(1)) / float(neachpphib(i1) + 1)
+        ! calculate dpphi
+        s = tm%grid(imub0)%s(i1) 
+        dpphi = abs(tm%grid(imub0)%ds * sgridds(s))
         ! load particles
         do i2 = 1, neachpphib(i1)
           ! increase the counter
