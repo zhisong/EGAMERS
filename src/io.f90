@@ -18,7 +18,7 @@ module io
   integer, parameter :: ioorbit    = 23  ! orbit file
 
 #ifdef NC
-  integer, parameter :: NDIMS = 2
+  integer, parameter :: NFIELD_DIMS = 2
   integer, private :: ncid_field, ncid_part
   integer, private :: nr_dimid, rec_dimid, nr_varid, rec_varid, eta_varid, lambda_varid
   integer, private :: irec, NR
@@ -45,7 +45,7 @@ contains
     character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
 
     ! For the field, we are writing a 2D data, in grid of nele and t
-    integer :: dimids(NDIMS)
+    integer :: dimids(NFIELD_DIMS)
 
     integer :: i1
     real, dimension(:), allocatable :: r
@@ -97,7 +97,7 @@ contains
         r(i1) = dx * float(i1-1)
       enddo
     endif
-    
+
     call check( nf90_put_var(ncid_field, nr_varid, r) )
     if (ALLOCATED(r)) deallocate(r)
 
@@ -143,20 +143,17 @@ contains
     integer :: i1, i2
 
 #ifdef NC
-    integer :: start(NDIMS), counts(NDIMS)
-    integer :: start_t(1), counts_t(1)
+    integer :: start(NFIELD_DIMS), counts(NFIELD_DIMS)
   
     ! increase the record counter
     irec = irec + 1
 
     start = (/1, irec/)
     counts = (/NR, 1/)
-    start_t = (/irec/)
-    counts_t = (/1/)
 
     ! first write time variable
-    call check( nf90_put_var(ncid_field, rec_varid, (/t/), start = start_t, &
-                              count = counts_t ) ) 
+    call check( nf90_put_var(ncid_field, rec_varid, (/t/), start = (/irec/), &
+                              count = (/1/) ) ) 
 #endif
 
     if (lfieldoutput .eq. 0) then

@@ -46,14 +46,14 @@ program EGAMERS
 #endif
   endif
   
-  ! we want the title to show completely first
-  call mpi_sync()
-  
   call readnamelist()
   call paras_phy_init()
   call profile_init()
   call distribution_fun_init()
   
+  ! we want the title to show completely first
+  call mpi_sync()
+
   if (imode .eq. 0) then
     ! imode == 0
     ! Run PIC simulation
