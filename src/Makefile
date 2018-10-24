@@ -1,17 +1,46 @@
+# EGAMERS Makefile
+
+#****** Please choose the following options *******
 # COMPILER SELECTIONS
 # for Intel, use COMPILER = ifort
 # for gfortran, use COMPILER = gfortran
-COMPILER = gfortran
+# !! To use gfortran, one needs to install the GNU FORTRAN Compiler
+# !! To use ifort, one needs to install the INTEL FORTRAN Compiler (license required)
+# !! We haven't tested on other fortran compilers
 
 # MKL
 # compile with MKL, use MKL = yes
 # compile with LAPACK, use MKL = no
-MKL = no
+# !! EGAMERS needs matrix operation subroutines to run
+# !! One can use either LAPACK+BLAS(GNU) or MKL(INTEL), depending on the availability
+# !! To use MKL, one needs to install the INTEL Math Kernal Library (license required)
+# !! The code will fail on newest verion of MKL, please use <2016 version
 
 # MPI
-# compile without MPI, use MPI = no
-# compile with MPI, use MPI = yes
+# compile without MPI (can use only one cpu, good for laptop), use MPI = no
+# compile with MPI (can use many cpus and cluster), use MPI = yes
+# !! Message Passing Interface (MPI) is a communications protocol for parallel computation
+# !! MPI is highly recommended for PIC mode. Linear solver can work resonablely fast without MPI.
+# !! To use MPI, one need to install a MPI library
+# !! Have tested OpenMPI 1.10.2 and Intel MPI 2018. 
+
+# NETCDF
+# compile without NETCDF (output binary unformatted data), use NETCDF = no
+# compile with NETCDF (output NETCDF format), use NETCDF = yes
+# !! NETCDF is a stucture for output data, can be easily read by Python or Matlab
+# !! NOTE: NETCDF/binary will only be used for PIC output, other modes will output text files
+
+COMPILER = gfortran
+MKL = no
 MPI = yes
+NETCDF = yes
+# The path to NETCDF, please adjust
+NETCDF_INCLUDE = /usr/include/
+#NETCDF_INCLUDE = $(NETCDFHOME)/include
+NETCDF_LIB = /usr/lib/x86_64-linux-gnu/
+#NETCDF_LIB = $(NETCDFHOME)/lib
+
+#****************************************************
 
 # the name of the executable
 TARGET = ../egamers.exe
@@ -40,6 +69,12 @@ ifeq ($(MPI), yes)
   MACRO += -DMPI
 endif
 
+ifeq ($(NETCDF), yes)
+  MACRO += -DNC
+  LIB += -lnetcdff -L$(NETCDF_LIB)
+  INCLUDE += -I$(NETCDF_INCLUDE)
+endif
+
 all :	$(OBJS)
 	$(FC) ${FFLAGS} ${MACRO} -o $(TARGET) $(MODULES) $(OBJS) $(LIB)
 
@@ -49,4 +84,4 @@ clean :
 	rm $(TARGET)
 
 %.o : %.f90
-	$(FC) ${FFLAGS} ${MACRO} -c $<
+	$(FC) ${FFLAGS} ${MACRO} ${INCLUDE} -c $<

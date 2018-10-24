@@ -7,18 +7,17 @@ module nl
   ! file units
   integer, parameter :: ionamelist = 10  ! namelist file
 
-  ! number of radial points put in the output
-  integer, parameter :: nfieldoutput = 100
-
   ! Input quantities
 
   ! //////// NAMELIST RUNS ////////
   ! WHAT to do in the code
   ! MODE of running
-  !  imode = 1   run as an eigenvalue solver and solve for E_r and omega
+  !  imode = 0   run as PIC simulation, solving time evolution of E_r and particles
+  !        = 1   run as an eigenvalue solver and solve for E_r and omega
   !        = 2   calculate the map of bounce frequency for a given mub0,
   !                  and the resonance lines for a given frequency
   !        = 3   only plot the orbit for a given (E, mub0, Pphi)
+  !        = 4   run as test particle code, reading field from result of PIC simulation
   integer :: imode = 1
 
   ! the follows are used when imode = 1 (eigenvalue solver)
@@ -175,9 +174,18 @@ module nl
   ! real    :: initampldt = 1e-5     ! initial time derivative of amplitute (max of random)
   ! integer, public :: nscreen = 1000        ! screen output inteval in steps
   ! integer, public :: nsnapfield = 100      ! field output inteval in steps
-  ! integer, public :: nsnappart  = 1000     ! particle output inteval in steps
+  ! integer, public :: nsnappart  = 100000   ! particle output inteval in steps (will overwrite, only use for hot start)
   ! defined in module field
   ! real    :: gamma_d = 0.0         ! the "ad-hoc" damping rate
+
+  ! defined here
+  ! number of radial points put in the output
+  integer :: nfieldoutput = 100
+  ! to output the finite element weights or the field after multiplying by finite elements
+  integer :: lfieldoutput = 0
+  !                       = 0 to output the original finite element weights (needed for test particle and hot start)
+  !                       = 1 to output the field after multiplying by finite elements
+
 contains
 
 ! ////// INPUT //////
@@ -211,7 +219,7 @@ contains
          tper0, tpar0, Rres, r_peak
     ! PIC simulation parameters
     namelist /PICS/ nparticles, dt, dt_adjust, ksteps, initampl, initampldt, &
-         gamma_d, nsnappart, nsnapfield, nscreen
+         gamma_d, nsnappart, nsnapfield, nscreen, nfieldoutput, lfieldoutput
     
     open(UNIT=ionamelist, FILE='namelist.in', ACTION='READ')
 
