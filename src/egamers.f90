@@ -106,11 +106,12 @@ program EGAMERS
       if (mpi_is_master()) then
         ! screen output for every nscreen steps
         if (MOD(i1, nscreen).eq.0 .or. i1.eq.ksteps) then
-          write(*,*) 'ksteps = ', i1, ', active particles ', n_active
+          write(*,1000) i1, t*1000.0, n_active
+1000 format('steps = ', i8, ', t=', e15.3,'ms, active markers ', i8)
         endif
         ! output the field for every nsnapfield steps
         if (MOD(i1, nsnapfield).eq.0 .or. i1.eq.ksteps) call io_snapshot_field(efield)
-        ! output particles for every nsnappart steps
+        ! output particles for every nsnappart steps (will overwrite)
         !if (MOD((i1), nsnappart).eq.0 .or. i1.eq.ksteps-1) call io_snapshot_part()
       end if
     end do

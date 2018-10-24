@@ -2,36 +2,136 @@
 
 module io
 
+! use netCDF for output if defined
+#ifdef NC
+  use netcdf
+#endif
+
   use paras_num, only : neigenmax
   use nl
+
   implicit none
 
   integer, parameter :: iofield    = 20  ! electric field file
   integer, parameter :: iofqc      = 21  ! continuum and global mode fqc file
   integer, parameter :: iomap      = 22
   integer, parameter :: ioorbit    = 23  ! orbit file
+
+#ifdef NC
+  integer, parameter :: NDIMS = 2
+  integer, private :: ncid_field, ncid_part
+  integer, private :: nr_dimid, rec_dimid, nr_varid, rec_varid, eta_varid, lambda_varid
+  integer, private :: irec, NR
+#else
   integer, parameter :: iosnapfield= 24  ! field snapshot file
   integer, parameter :: iosnappart = 25  ! particle snapshot file
-  
+#endif
+
 contains
-  
-! ////// OUTPUT //////  
+
+! ////// OUTPUT //////
 
   subroutine io_snapshot_init()
     ! initialize the snapshot files
-    open(UNIT=iosnapfield, FILE='snapshot.field.out',ACTION='WRITE')
-    open(UNIT=iosnappart, FILE='snapshot.part.out',ACTION='WRITE')
-  end subroutine
+    use radial_grid
+
+#ifdef NC
+    character (len = *), parameter :: FIELD_FILE = "snapshot.field.nc"
+    character (len = *), parameter :: PART_FILE = "snapshot.part.nc"
+    character (len = *), parameter :: NR_NAME = "radial_element"
+    character (len = *), parameter :: REC_NAME = "time"
+    character (len = *), parameter :: ETA_NAME = "eta"
+    character (len = *), parameter :: LAMBDA_NAME = "lambda"
+    character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
+
+    ! For the field, we are writing a 2D data, in grid of nele and t
+    integer :: dimids(NDIMS)
+
+    integer :: i1
+    real, dimension(:), allocatable :: r
+    real :: dx
+
+    if (lfieldoutput .eq. 0) then
+      NR = nele
+    elseif (lfieldoutput .eq. 1) then
+      NR = nfieldoutput
+    else
+      stop "lfield output invalid"
+    end if
+
+    ! Create the file.
+    call check( nf90_create(FIELD_FILE, nf90_clobber, ncid_field) )
+    call check( nf90_create(PART_FILE, nf90_clobber, ncid_part) )
+
+    ! Define the dimensions. The record dimension is defined to have
+    ! unlimited length - it can grow as needed.
+    call check( nf90_def_dim(ncid_field, NR_NAME, NR, nr_dimid) )
+    call check( nf90_def_dim(ncid_field, REC_NAME, NF90_UNLIMITED, rec_dimid) )
+
+    ! Define variable
+    call check( nf90_def_var(ncid_field, REC_NAME, NF90_REAL8, rec_dimid, rec_varid) )
+
+    dimids = (/ nr_dimid, rec_dimid /)
+
+    call check( nf90_def_var(ncid_field, LAMBDA_NAME, NF90_REAL8, dimids, eta_varid) )
+    call check( nf90_def_var(ncid_field, ETA_NAME, NF90_REAL8, dimids, lambda_varid) )
+    
+    call check( nf90_def_var(ncid_field, NR_NAME, NF90_REAL8, nr_dimid, nr_varid) )
+    call check( nf90_put_att(ncid_field, nr_varid, LFIELDOUTPUT_NAME, lfieldoutput) )
+      
+    call check( nf90_enddef(ncid_field) )
+
+    ! put in the nr variable
+    allocate(r(NR))
+    if (lfieldoutput .eq. 0) then   
+      dx = 1. / real(nelement - 1)
+      r(1) = 0.0
+      r(NR) = 1.0
+      do i1 = 1, nelement-2
+        r(i1*2) = dx * float(i1)
+        r(i1*2+1) = dx * float(i1)
+      enddo
+    else
+      dx = 1. / real(nfieldoutput - 1)
+      do i1 = 1, 100
+        r(i1) = dx * float(i1-1)
+      enddo
+    endif
+    
+    call check( nf90_put_var(ncid_field, nr_varid, r) )
+    if (ALLOCATED(r)) deallocate(r)
+
+    ! record counter = 0
+    irec = 0
+
+#else
+    if (lfieldoutput .lt. 0 .or. lfieldoutput .gt. 1) then
+      stop "lfield output invalid"
+    endif
+    open(UNIT=iosnapfield, FILE='snapshot.field.out',ACTION='WRITE',FORM = 'unformatted')
+    open(UNIT=iosnappart, FILE='snapshot.part.out',ACTION='WRITE',FORM = 'unformatted')
+
+    ! write the header
+    write(iosnapfield) lfieldoutput, nele, nfieldoutput
+#endif
+
+  end subroutine io_snapshot_init
 
   subroutine io_snapshot_destroy()
     ! initialize the snapshot files
+#ifdef NC
+    call check( nf90_close(ncid_field))
+    call check( nf90_close(ncid_part))
+#else
     close(UNIT=iosnapfield)
     close(UNIT=iosnappart)
+#endif
   end subroutine
 
   subroutine io_snapshot_field(ev)
     ! write the field to file
     use field
+    use pic, only : t
     use radial_grid
     use hermite
     implicit none
@@ -42,49 +142,90 @@ contains
     complex :: value
     integer :: i1, i2
 
-    allocate(er(nfieldoutput))
-    er(:) = 0.0
-    dx = 1. / real(nfieldoutput - 1)
-    
-    do i1 = 1, nfieldoutput
-       x = dx * real(i1 - 1)
-       ! first grid point
-       er(i1) = ev%lambda(1) * c2(x, 0., -1., rgrid(1))
-       ! last grid point
-       er(i1) = er(i1) + ev%lambda(nele) * c2(x, 1., rgrid(nelement-1), 1.2) 
-
-       ! adding contribution from other grids
-       do i2 = 2, nelement - 1
-          er(i1) = er(i1) + ev%lambda(i2*2-2) * c1(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
-          er(i1) = er(i1) + ev%lambda(i2*2-1) * c2(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
-       end do
-       write(iosnapfield, '(E15.7)', ADVANCE="no") er(i1)
-    end do
-
-    write(iosnapfield, *)
-
-    er(:) = 0.0
-    dx = 1. / real(nfieldoutput - 1)
-    
-    do i1 = 1, nfieldoutput
-       x = dx * real(i1 - 1)
-       ! first grid point
-       er(i1) = ev%eta(1) * c2(x, 0., -1., rgrid(1))
-       ! last grid point
-       er(i1) = er(i1) + ev%eta(nele) * c2(x, 1., rgrid(nelement-1), 1.2) 
-
-       ! adding contribution from other grids
-       do i2 = 2, nelement - 1
-          er(i1) = er(i1) + ev%eta(i2*2-2) * c1(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
-          er(i1) = er(i1) + ev%eta(i2*2-1) * c2(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
-       end do
-       write(iosnapfield, '(E15.7)', ADVANCE="no") er(i1)
-    end do
-
-    write(iosnapfield, *)
-
-    if(ALLOCATED(er)) deallocate(er)
+#ifdef NC
+    integer :: start(NDIMS), counts(NDIMS)
+    integer :: start_t(1), counts_t(1)
   
+    ! increase the record counter
+    irec = irec + 1
+
+    start = (/1, irec/)
+    counts = (/NR, 1/)
+    start_t = (/irec/)
+    counts_t = (/1/)
+
+    ! first write time variable
+    call check( nf90_put_var(ncid_field, rec_varid, (/t/), start = start_t, &
+                              count = counts_t ) ) 
+#endif
+
+    if (lfieldoutput .eq. 0) then
+#ifdef NC
+      call check( nf90_put_var(ncid_field, lambda_varid, ev%lambda, start = start, &
+                              count = counts) )      
+      call check( nf90_put_var(ncid_field, eta_varid, ev%eta, start = start, &
+                              count = counts) ) 
+#else
+      write(iosnapfield) ev%lambda(1:nele)
+      write(iosnapfield) ev%eta(1:nele)
+#endif
+    else
+      allocate(er(nfieldoutput))
+      er(:) = 0.0
+      dx = 1. / real(nfieldoutput - 1)
+
+      do i1 = 1, nfieldoutput
+        x = dx * real(i1 - 1)
+        ! first grid point
+        er(i1) = ev%lambda(1) * c2(x, 0., -1., rgrid(1))
+        ! last grid point
+        er(i1) = er(i1) + ev%lambda(nele) * c2(x, 1., rgrid(nelement-1), 1.2)
+
+        ! adding contribution from other grids
+        do i2 = 2, nelement - 1
+            er(i1) = er(i1) + ev%lambda(i2*2-2) * c1(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
+            er(i1) = er(i1) + ev%lambda(i2*2-1) * c2(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
+        end do
+      end do
+#ifdef NC
+      call check( nf90_put_var(ncid_field, lambda_varid, er, start = start, &
+                              count = counts) )
+#else
+      write(iosnapfield) er
+#endif
+
+      er(:) = 0.0
+      dx = 1. / real(nfieldoutput - 1)
+
+      do i1 = 1, nfieldoutput
+        x = dx * real(i1 - 1)
+        ! first grid point
+        er(i1) = ev%eta(1) * c2(x, 0., -1., rgrid(1))
+        ! last grid point
+        er(i1) = er(i1) + ev%eta(nele) * c2(x, 1., rgrid(nelement-1), 1.2)
+
+        ! adding contribution from other grids
+        do i2 = 2, nelement - 1
+            er(i1) = er(i1) + ev%eta(i2*2-2) * c1(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
+            er(i1) = er(i1) + ev%eta(i2*2-1) * c2(x, rgrid(i2), rgrid(i2-1), rgrid(i2+1))
+        end do
+      end do
+#ifdef NC
+      call check( nf90_put_var(ncid_field, eta_varid, er, start = start, &
+                              count = counts) )
+#else
+      write(iosnapfield) er
+#endif
+      if(ALLOCATED(er)) deallocate(er)
+
+    end if
+
+#ifdef NC
+    call check( nf90_sync(ncid_field) )
+#else
+    FLUSH(iosnapfield)
+#endif
+
   end subroutine io_snapshot_field
 
   subroutine plotcontinuum()
@@ -94,11 +235,11 @@ contains
     !           omg_global_mode_1_re     im
     !           omg_global_mode_2_re     im
     !              .....
-    !            r       omg_continuum     
-    !  (e.g.)   0.1        300000         
-    !           0.2        290000        
-    !           0.3        280000       
-    !           ...         ...          
+    !            r       omg_continuum
+    !  (e.g.)   0.1        300000
+    !           0.2        290000
+    !           0.3        280000
+    !           ...         ...
 
     use profile, only : omega_gam
     use eigen, only : lambda
@@ -107,7 +248,7 @@ contains
     real :: dx, x
     complex :: omega
     integer :: i1
-    
+
     open(UNIT=iofqc, FILE='fqc.out', ACTION='WRITE')
 
     omega = sqrt(lambda)
@@ -124,7 +265,7 @@ contains
     end do
 
     close(UNIT=iofqc)
-    
+
   end subroutine plotcontinuum
 
   subroutine printfield(v)
@@ -142,18 +283,18 @@ contains
     integer :: i1, i2
 
     open(UNIT=iofield, FILE='field.out', ACTION='WRITE')
-    
+
     write(iofield,*) neigen, nfieldoutput
 
     allocate(er(nfieldoutput))
     dx = 1. / real(nfieldoutput - 1)
-    
+
     do i1 = 1, nfieldoutput
        x = dx * real(i1 - 1)
        ! first grid point
        er(i1) = v(1) * c2(x, 0., -1., rgrid(1))
        ! last grid point
-       er(i1) = er(i1) + v(nele) * c2(x, 1., rgrid(nelement-1), 1.2) 
+       er(i1) = er(i1) + v(nele) * c2(x, 1., rgrid(nelement-1), 1.2)
 
        ! adding contribution from other grids
        do i2 = 2, nelement - 1
@@ -170,7 +311,7 @@ contains
   subroutine write_map_header()
     ! write the header of the output file if imode = 2
     implicit none
-    
+
     open(UNIT=iomap, FILE='map.out', ACTION='WRITE')
     write(iomap, *) ienable_trap, ienable_cop, ienable_ctp
 
@@ -194,7 +335,7 @@ contains
     real :: dee, ee
 
     write(iomap,*) this%npphin, this%neen
-    
+
     do i1 = 1, this%npphin
        do i2 = 1, this%periodn(i1)%n
           write(iomap,*) this%pphigrid(i1)/ei/psi1, &
@@ -210,11 +351,11 @@ contains
     end do
 
   end subroutine plot_tgrid_map
-    
+
   subroutine printorbit(norbit, rdata, thetadata, peroiddata)
     ! write to file the orbit if imode = 3
     ! format : omega     (line 1)
-    !          n         (line 2)   
+    !          n         (line 2)
     !          r, theta  (line 3 - line n+3)
     use paras_phy, only : pi
     implicit none
@@ -252,7 +393,7 @@ contains
     use orbit_classify
     use profile, only : psi1
     implicit none
-    
+
     real, intent(in) :: ee, mub0, pphi
     integer, intent(in) :: vsign
 
@@ -352,5 +493,17 @@ contains
        end if
     end if
   end subroutine printorbittype
+
+! ///// Subroutine only for netcdf
+#ifdef NC
+    subroutine check(status)
+    integer, intent ( in) :: status
+
+    if(status /= nf90_noerr) then
+      print *, trim(nf90_strerror(status))
+      stop "Stopped, NETCDF error"
+    end if
+  end subroutine check
+#endif
 
 end module io
