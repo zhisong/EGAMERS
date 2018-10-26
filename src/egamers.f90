@@ -311,8 +311,10 @@ program EGAMERS
       if (mpi_is_master() .and. MOD(i1, nscreen_test).eq.0) then
         write(*,*) 'steps =', i1
       end if
+      call mpi_sync()
       if (i1 .ge. ksteps_snapstart) i2 = i2 + 1
       if (i2 .ge. 0 .and. (MOD(i2, nsnappart_test).eq.0 .or. i1.eq.ksteps)) call io_snapshot_test_particles()
+      call mpi_sync()
     end do
 
     ! cleaning up
