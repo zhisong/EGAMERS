@@ -163,7 +163,7 @@ module nl
   ! real    :: dpphi_tpar = 0.5    ! tpar width (bi-Max & Gaussian)
   ! real    :: r_peak = 0.0        ! the peak-r location of the fast ion distribution
 
-  ! //////// NAMELIST PIC ///////
+  ! //////// NAMELIST PICS ///////
   ! namelist for PIC simulation
   ! defined in module pic
   ! integer :: nparticles = 100000   ! total number of particles (sum over all cpus)
@@ -186,6 +186,17 @@ module nl
   !                       = 0 to output the original finite element weights (needed for test particle and hot start)
   !                       = 1 to output the field after multiplying by finite elements
 
+  ! //////// NAMELIST TEST ///////
+  ! namelist for test particles simulation
+  ! defined in module test_particles
+  ! integer :: nparticles_test = 100000   ! total number of particles (sum over all cpus)
+  ! integer :: ksteps_test = 10000        ! total number of steps
+  ! real    :: dt_test = 1e-6             ! time step (in seconds)
+  ! integer, public :: nscreen_test = 1000        ! screen output inteval in steps
+  ! integer, public :: nsnappart_test  = 10   ! particle output inteval in steps (will overwrite, only use for hot start)
+  ! integer, public :: mub0_test = 300            ! the slice of mub0 where test particles are on, in keV
+
+
 contains
 
 ! ////// INPUT //////
@@ -197,6 +208,7 @@ contains
     use distribution_fun
     use field, only : gamma_d
     use pic
+    use test_particles
     implicit none
 
     ! what to do in the code
@@ -220,22 +232,28 @@ contains
     ! PIC simulation parameters
     namelist /PICS/ nparticles, dt, dt_adjust, ksteps, initampl, initampldt, &
          gamma_d, nsnappart, nsnapfield, nscreen, nfieldoutput, lfieldoutput
+
+    namelist /TEST/ nparticles_test, dt_test, ksteps_test, nscreen_test, &
+         nsnappart_test, mub0_test
     
     open(UNIT=ionamelist, FILE='namelist.in', ACTION='READ')
 
     read(ionamelist, nml = RUNS)
     read(ionamelist, nml = NUMS)
-    if (imode <= 2) then
+    if (imode <= 2 .or. imode == 4) then
       read(ionamelist, nml = GRID)
     end if
     read(ionamelist, nml = PHYS)
     read(ionamelist, nml = PROF)
     
-    if (imode <= 1) then
+    if (imode <= 1 .or. imode == 4) then
       read(ionamelist, nml = FAST)
     end if
     if (imode == 0) then
       read(ionamelist, nml = PICS)
+    end if
+    if (imode == 4) then
+      read(ionamelist, nml = TEST)
     end if
 
     close(ionamelist)

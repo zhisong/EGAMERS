@@ -46,7 +46,7 @@ NETCDF_LIB = /usr/lib/x86_64-linux-gnu/
 TARGET = ../egamers.exe
 
 # the source files
-OBJS =  paras_phy.o paras_num.o interfaces.o matrix_module.o sgtsl.o cubic.o spline_module.o profile.o distribution_fun.o sintable.o hermite.o landau_integral.o radial_grid.o orbit_classify.o orbit.o orbit_integral.o mpi.o random.o trap_grid.o trap_matrix.o mhd_matrix.o field.o eigen.o particles.o pic.o nl.o io.o egamers.o
+OBJS =  paras_phy.o paras_num.o interfaces.o matrix_module.o sgtsl.o cubic.o spline_module.o profile.o distribution_fun.o sintable.o hermite.o landau_integral.o radial_grid.o orbit_classify.o orbit.o orbit_integral.o mpi.o random.o trap_grid.o trap_matrix.o mhd_matrix.o field.o eigen.o particles.o test_particles.o pic.o nl.o io.o egamers.o
 
 ifeq ($(COMPILER), ifort)
   FC = mpiifort

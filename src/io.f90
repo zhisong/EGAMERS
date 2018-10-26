@@ -18,6 +18,14 @@ module io
   integer, parameter :: ioorbit    = 23  ! orbit file
 
 #ifdef NC
+  character (len = *), parameter :: FIELD_FILE = "snapshot.field.nc"
+  character (len = *), parameter :: PART_FILE = "snapshot.part.nc"
+  character (len = *), parameter :: NR_NAME = "radial_element"
+  character (len = *), parameter :: REC_NAME = "time"
+  character (len = *), parameter :: ETA_NAME = "eta"
+  character (len = *), parameter :: LAMBDA_NAME = "lambda"
+  character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
+
   integer, parameter :: NFIELD_DIMS = 2
   integer, private :: ncid_field, ncid_part
   integer, private :: nr_dimid, rec_dimid, nr_varid, rec_varid, eta_varid, lambda_varid
@@ -31,18 +39,14 @@ contains
 
 ! ////// OUTPUT //////
 
-  subroutine io_snapshot_init()
+  subroutine io_snapshot_init(start_idx)
     ! initialize the snapshot files
     use radial_grid
+    implicit none
+
+    integer, intent(in), optional :: start_idx
 
 #ifdef NC
-    character (len = *), parameter :: FIELD_FILE = "snapshot.field.nc"
-    character (len = *), parameter :: PART_FILE = "snapshot.part.nc"
-    character (len = *), parameter :: NR_NAME = "radial_element"
-    character (len = *), parameter :: REC_NAME = "time"
-    character (len = *), parameter :: ETA_NAME = "eta"
-    character (len = *), parameter :: LAMBDA_NAME = "lambda"
-    character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
 
     ! For the field, we are writing a 2D data, in grid of nele and t
     integer :: dimids(NFIELD_DIMS)
@@ -73,8 +77,8 @@ contains
 
     dimids = (/ nr_dimid, rec_dimid /)
 
-    call check( nf90_def_var(ncid_field, LAMBDA_NAME, NF90_REAL8, dimids, eta_varid) )
-    call check( nf90_def_var(ncid_field, ETA_NAME, NF90_REAL8, dimids, lambda_varid) )
+    call check( nf90_def_var(ncid_field, LAMBDA_NAME, NF90_REAL8, dimids, lambda_varid) )
+    call check( nf90_def_var(ncid_field, ETA_NAME, NF90_REAL8, dimids, eta_varid) )
     
     call check( nf90_def_var(ncid_field, NR_NAME, NF90_REAL8, nr_dimid, nr_varid) )
     call check( nf90_put_att(ncid_field, nr_varid, LFIELDOUTPUT_NAME, lfieldoutput) )
@@ -101,8 +105,12 @@ contains
     call check( nf90_put_var(ncid_field, nr_varid, r) )
     if (ALLOCATED(r)) deallocate(r)
 
-    ! record counter = 0
-    irec = 0
+    ! record counter = 0 or start_idx
+    if (PRESENT(start_idx)) then
+      irec = start_idx
+    else
+      irec = 0
+    end if
 
 #else
     if (lfieldoutput .lt. 0 .or. lfieldoutput .gt. 1) then
@@ -224,6 +232,66 @@ contains
 #endif
 
   end subroutine io_snapshot_field
+
+  subroutine io_read_field_init(nt_records, nr_records)
+  ! initializing, reading from saved field
+    implicit none
+    integer, intent(out) :: nt_records, nr_records
+
+    integer :: nt, lfieldoutput_local
+
+#ifdef NC
+    call check( nf90_open(FIELD_FILE, nf90_nowrite, ncid_field) )
+    
+    ! get dimension id
+    call check( nf90_inq_dimid(ncid_field, REC_NAME, rec_dimid) )
+    call check( nf90_inq_dimid(ncid_field, NR_NAME, nr_dimid) )
+
+    ! enquire dimension
+    call check( nf90_inquire_dimension(ncid_field, rec_dimid, len=nt) )
+    call check( nf90_inquire_dimension(ncid_field, nr_dimid, len=NR) )
+    nt_records = nt
+    nr_records = NR
+
+    ! get variable id
+    call check( nf90_inq_varid(ncid_field, REC_NAME, rec_varid) )
+    call check( nf90_inq_varid(ncid_field, NR_NAME, nr_varid) )
+    call check( nf90_inq_varid(ncid_field, ETA_NAME, eta_varid) )
+    call check( nf90_inq_varid(ncid_field, LAMBDA_NAME, lambda_varid) )
+
+    ! get the attribute
+    call check( nf90_get_att(ncid_field, nr_varid, LFIELDOUTPUT_NAME, lfieldoutput_local) )
+    if (lfieldoutput_local .ne. 0) then
+      stop "Only field data for lfieldoutput=0 runs can be read"
+    endif
+
+#else
+#endif
+  end subroutine io_read_field_init
+
+  subroutine io_read_field(t_now, lambda_t, eta_t, idx)
+    ! read the evolution of field from file
+    implicit none
+    integer, intent(in) :: idx
+    real, intent(out) :: t_now
+    real, dimension(:) :: lambda_t, eta_t
+
+#ifdef NC
+    real :: t_temp(1)
+    integer :: start(NFIELD_DIMS), counts(NFIELD_DIMS)
+
+    start = (/1, idx/)
+    counts = (/NR, 1/)
+
+    call check( nf90_get_var(ncid_field, rec_varid, t_temp, start=(/idx/), count=(/1/)) )
+    t_now = t_temp(1)
+    call check( nf90_get_var(ncid_field, lambda_varid, lambda_t, start=start, count=counts) )
+    call check( nf90_get_var(ncid_field, eta_varid, eta_t, start=start, count=counts) )
+#else
+#endif
+
+  end subroutine io_read_field
+    
 
   subroutine plotcontinuum()
     ! plot the bulk continuum and omega of the global mode
