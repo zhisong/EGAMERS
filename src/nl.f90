@@ -195,6 +195,7 @@ module nl
   ! integer, public :: nscreen_test = 1000        ! screen output inteval in steps
   ! integer, public :: nsnappart_test  = 10   ! particle output inteval in steps (will overwrite, only use for hot start)
   ! integer, public :: mub0_test = 300            ! the slice of mub0 where test particles are on, in keV
+  ! integer, public :: ksteps_snapstart = 0       ! snapshot of particles starting ksteps
 
 
 contains
@@ -234,7 +235,7 @@ contains
          gamma_d, nsnappart, nsnapfield, nscreen, nfieldoutput, lfieldoutput
 
     namelist /TEST/ nparticles_test, dt_test, ksteps_test, nscreen_test, &
-         nsnappart_test, mub0_test
+         nsnappart_test, mub0_test, ksteps_snapstart
     
     open(UNIT=ionamelist, FILE='namelist.in', ACTION='READ')
 

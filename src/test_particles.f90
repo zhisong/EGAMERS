@@ -28,6 +28,7 @@ use particles
   integer, public :: nscreen_test = 1000        ! screen output inteval in steps
   integer, public :: nsnappart_test  = 10       ! particle output inteval in steps (will overwrite, only use for hot start)
   integer, public :: mub0_test = 300            ! the slice of mub0 where test particles are on, in keV
+  integer, public :: ksteps_snapstart = 0       ! snapshot of particles starting ksteps
 ! //////////////////
 
   real, dimension(:,:), allocatable, public :: lambda_t, eta_t

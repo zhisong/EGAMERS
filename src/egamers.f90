@@ -265,6 +265,10 @@ program EGAMERS
       write(*,*) 'mub0 = ', mub0_test, 'keV'
       write(*,'(A26)', ADVANCE='no') 'Reading field snapshot...'
       call io_read_field_init(nt, nr)
+      if (nr .ne. nradial_grid*2-2) then 
+        stop "radial grid from namelist and field data does not match"
+      end if
+
       ! allocate the space
       allocate(t_list(nt))
       allocate(lambda_t(nr, nt))
@@ -273,7 +277,11 @@ program EGAMERS
       do i1 = 1, nt
         call io_read_field(t_list(i1), lambda_t(:,i1), eta_t(:,i1), i1)
       end do
+ 
+      call io_read_field_destroy()
+
       write(*,*) 'Successful'
+      write(*,*) 'Containing: ', nt, 'steps, total ', t_list(nt)*1000, 'ms'
       write(*,*) 'Calculating orbits...'
     end if
 
@@ -293,17 +301,22 @@ program EGAMERS
     if (mpi_is_master()) write(*,*) 'Initialing Particles...'
 
     call test_pic_init()
+    call io_snapshot_test_particles_init()
     
-    if (mpi_is_master() .and. nsnapfield > 0) write(*,*) 'steps =', 0
+    if (mpi_is_master()) write(*,*) 'steps =', 0
 
+    i2 = -1
     do i1 = 1, ksteps_test
       call test_pic_step()
       if (mpi_is_master() .and. MOD(i1, nscreen_test).eq.0) then
         write(*,*) 'steps =', i1
       end if
+      if (i1 .ge. ksteps_snapstart) i2 = i2 + 1
+      if (i2 .ge. 0 .and. (MOD(i2, nsnappart_test).eq.0 .or. i1.eq.ksteps)) call io_snapshot_test_particles()
     end do
 
     ! cleaning up
+    call io_snapshot_test_particles_destroy()
     call test_pic_destroy()
     call tgrid_destroy(tg_test)
 

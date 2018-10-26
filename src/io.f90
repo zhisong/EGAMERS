@@ -20,16 +20,41 @@ module io
 #ifdef NC
   character (len = *), parameter :: FIELD_FILE = "snapshot.field.nc"
   character (len = *), parameter :: PART_FILE = "snapshot.part.nc"
+  character (len = *), parameter :: TESTPART_FILE = "snapshot.testpart.nc"
   character (len = *), parameter :: NR_NAME = "radial_element"
   character (len = *), parameter :: REC_NAME = "time"
   character (len = *), parameter :: ETA_NAME = "eta"
   character (len = *), parameter :: LAMBDA_NAME = "lambda"
   character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
 
+  character (len = *), parameter :: ENERGY_NAME = "energy"
+  character (len = *), parameter :: PPHI_NAME = "pphi"
+  character (len = *), parameter :: MUB0_NAME = "mub0"
+  character (len = *), parameter :: THETA_NAME = "theta"
+  character (len = *), parameter :: DELTAF_NAME = "deltaf"
+  character (len = *), parameter :: FULLF_NAME = "fullf"
+  character (len = *), parameter :: OMEGAB_NAME = "omega_b"
+  character (len = *), parameter :: ACTIVE_NAME = "active"
+  character (len = *), parameter :: ID_NAME = "id"
+  
+  character (len = *), parameter :: UNIT_NAME = "unit"
+  character (len = *), parameter :: EPSI_NAME = "e*psi1"
+  character (len = *), parameter :: KEV_NAME = "keV"
+  character (len = *), parameter :: SECOND_NAME = "second"
+  
+
   integer, parameter :: NFIELD_DIMS = 2
   integer, private :: ncid_field, ncid_part
-  integer, private :: nr_dimid, rec_dimid, nr_varid, rec_varid, eta_varid, lambda_varid
+  integer, private :: nr_dimid, rec_dimid
+  integer, private :: nr_varid, rec_varid, eta_varid, lambda_varid
   integer, private :: irec, NR
+
+  integer, parameter ::NTESTPART_DIMS = 2
+  integer, private :: ncid_testpart
+  integer, private :: t_dimid, id_dimid
+  integer, private :: energy_varid, theta_varid, deltaf_varid, fullf_varid, omegab_varid
+  integer, private :: t_varid, pphi_varid, mub0_varid, active_varid
+  integer, private :: irec_test
 #else
   integer, parameter :: iosnapfield= 24  ! field snapshot file
   integer, parameter :: iosnappart = 25  ! particle snapshot file
@@ -74,6 +99,7 @@ contains
 
     ! Define variable
     call check( nf90_def_var(ncid_field, REC_NAME, NF90_REAL8, rec_dimid, rec_varid) )
+    call check( nf90_put_att(ncid_field, rec_varid, UNIT_NAME, SECOND_NAME) )
 
     dimids = (/ nr_dimid, rec_dimid /)
 
@@ -269,6 +295,11 @@ contains
 #endif
   end subroutine io_read_field_init
 
+  subroutine io_read_field_destroy()
+    implicit none
+    call check( nf90_close(ncid_field) )
+  end subroutine io_read_field_destroy
+
   subroutine io_read_field(t_now, lambda_t, eta_t, idx)
     ! read the evolution of field from file
     implicit none
@@ -292,6 +323,97 @@ contains
 
   end subroutine io_read_field
     
+  subroutine io_snapshot_test_particles_init()
+  ! initialize the snapshot file for test particles
+    use profile, only : psi1
+    use paras_phy, only : ei, eunit
+    use test_particles
+    use mpi
+    implicit none
+    
+#ifdef NC
+
+    integer :: dimids(NTESTPART_DIMS)
+    integer :: i1, ntotal, neach
+    real, dimension(:), allocatable :: tmpdata
+
+    ntotal = gc_test%n_mub0
+    neach = gc_test % n
+
+    ! Create the file on master node
+    if (mpi_is_master()) then
+      call check( nf90_create(TESTPART_FILE, IOR(nf90_clobber,nf90_share), ncid_testpart) )
+
+      ! Define the dimensions. The t dimension is defined to have
+      ! unlimited length - it can grow as needed.
+      call check( nf90_def_dim(ncid_testpart, ID_NAME, ntotal, id_dimid) )
+      call check( nf90_def_dim(ncid_testpart, REC_NAME, NF90_UNLIMITED, t_dimid) )
+
+      ! Define variable
+      call check( nf90_def_var(ncid_testpart, REC_NAME, NF90_REAL8, t_dimid, t_varid) )
+
+      dimids = (/ id_dimid, t_dimid /)
+      ! Pphi
+      call check( nf90_def_var(ncid_testpart, PPHI_NAME, NF90_REAL8, (/id_dimid/), pphi_varid) )
+      call check( nf90_def_var(ncid_testpart, MUB0_NAME, NF90_REAL8, varid=mub0_varid) )
+      
+      ! Energy, theta, deltaf, fullf, omegab
+      call check( nf90_def_var(ncid_testpart, ENERGY_NAME, NF90_REAL8, dimids, energy_varid) )
+      call check( nf90_def_var(ncid_testpart, THETA_NAME, NF90_REAL8, dimids, theta_varid) )
+      call check( nf90_def_var(ncid_testpart, DELTAF_NAME, NF90_REAL8, dimids, deltaf_varid) )
+      call check( nf90_def_var(ncid_testpart, FULLF_NAME, NF90_REAL8, dimids, fullf_varid) )
+      call check( nf90_def_var(ncid_testpart, OMEGAB_NAME, NF90_REAL8, dimids, omegab_varid) )
+      call check( nf90_def_var(ncid_testpart, ACTIVE_NAME, NF90_INT, dimids, active_varid) )      
+
+      call check( nf90_put_att(ncid_testpart, mub0_varid, UNIT_NAME, KEV_NAME) )
+      call check( nf90_put_att(ncid_testpart, pphi_varid, UNIT_NAME, EPSI_NAME) )
+      call check( nf90_put_att(ncid_testpart, pphi_varid, EPSI_NAME, ei * psi1) )
+      
+      call check( nf90_enddef(ncid_testpart) )
+
+      call check( nf90_put_var(ncid_testpart, mub0_varid, mub0_test) )
+      
+    endif
+    
+    call mpi_sync()
+
+    if (.not. mpi_is_master()) then
+
+      call check( nf90_open(TESTPART_FILE, IOR(nf90_write,nf90_share), ncid_testpart) )
+      
+      call check( nf90_inq_varid(ncid_testpart, PPHI_NAME, pphi_varid) )
+      call check( nf90_inq_varid(ncid_testpart, ENERGY_NAME, energy_varid) )
+      call check( nf90_inq_varid(ncid_testpart, THETA_NAME, theta_varid) )
+      call check( nf90_inq_varid(ncid_testpart, DELTAF_NAME, deltaf_varid) )
+      call check( nf90_inq_varid(ncid_testpart, FULLF_NAME, fullf_varid) )
+      call check( nf90_inq_varid(ncid_testpart, OMEGAB_NAME, omegab_varid) )
+      call check( nf90_inq_varid(ncid_testpart, ACTIVE_NAME, active_varid) )
+
+    endif
+
+    ! now first dump pphi value
+    allocate(tmpdata(neach))
+    do i1 = 1, neach
+      tmpdata(i1) = tg_test%pphigrid(gc_test_aux%grid_id(i1, 1)) / ei / psi1
+    enddo
+    call check( nf90_put_var(ncid_testpart, pphi_varid, tmpdata, start = (/gc_test%istart/), &
+                              count = (/neach/)) )
+    if (ALLOCATED(tmpdata)) deallocate(tmpdata)
+
+    call check( nf90_close(ncid_testpart) )
+
+#endif
+  end subroutine io_snapshot_test_particles_init  
+
+  subroutine io_snapshot_test_particles_destroy()
+    call check( nf90_close(ncid_testpart))
+  end subroutine io_snapshot_test_particles_destroy 
+
+  subroutine io_snapshot_test_particles()
+    use mpi
+    if (mpi_is_master()) write(*,*) 'snapshot'
+
+  end subroutine io_snapshot_test_particles
 
   subroutine plotcontinuum()
     ! plot the bulk continuum and omega of the global mode
