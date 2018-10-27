@@ -73,8 +73,8 @@ contains
 
     dimids = (/ nr_dimid, rec_dimid /)
 
-    call check( nf90_def_var(ncid_field, LAMBDA_NAME, NF90_REAL8, dimids, eta_varid) )
-    call check( nf90_def_var(ncid_field, ETA_NAME, NF90_REAL8, dimids, lambda_varid) )
+    call check( nf90_def_var(ncid_field, LAMBDA_NAME, NF90_REAL8, dimids, lambda_varid) )
+    call check( nf90_def_var(ncid_field, ETA_NAME, NF90_REAL8, dimids, eta_varid) )
     
     call check( nf90_def_var(ncid_field, NR_NAME, NF90_REAL8, nr_dimid, nr_varid) )
     call check( nf90_put_att(ncid_field, nr_varid, LFIELDOUTPUT_NAME, lfieldoutput) )
