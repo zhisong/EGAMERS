@@ -69,7 +69,7 @@ program EGAMERS
       end if
     end if
 
-    call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
+    call rgrid_init(nradial_grid, igrid_type, xr1, sig1, xr2, sig2)
     call sintable_init(nmax, np_trap)
 
     call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
@@ -127,7 +127,7 @@ program EGAMERS
     ! Run as an eigenvalue solver
     if (mpi_is_master()) write(*,*) 'Eigenvalue solver mode'
 
-    call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
+    call rgrid_init(nradial_grid, igrid_type, xr1, sig1, xr2, sig2)
     call sintable_init(nmax, np_trap)
     
     call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
@@ -164,7 +164,7 @@ program EGAMERS
       write(*,*) 'muB0 = ', mub0_in, 'keV'
       mub0 = mub0_in * 1000. * eunit
 
-      call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
+      call rgrid_init(nradial_grid, igrid_type, xr1, sig1, xr2, sig2)
       call sintable_init(nmax, np_trap)
 
       ! write header of the output file

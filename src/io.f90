@@ -78,18 +78,23 @@ contains
     
     call check( nf90_def_var(ncid_field, NR_NAME, NF90_REAL8, nr_dimid, nr_varid) )
     call check( nf90_put_att(ncid_field, nr_varid, LFIELDOUTPUT_NAME, lfieldoutput) )
+    call check( nf90_put_att(ncid_field, nr_varid, "igrid_type", igrid_type) )
+    call check( nf90_put_att(ncid_field, nr_varid, "XR1", xr1) )
+    call check( nf90_put_att(ncid_field, nr_varid, "XR2", xr2) )
+    call check( nf90_put_att(ncid_field, nr_varid, "SIG1", sig1) )
+    call check( nf90_put_att(ncid_field, nr_varid, "SIG2", sig2) )
+
       
     call check( nf90_enddef(ncid_field) )
 
     ! put in the nr variable
     allocate(r(NR))
     if (lfieldoutput .eq. 0) then   
-      dx = 1. / real(nelement - 1)
       r(1) = 0.0
       r(NR) = 1.0
       do i1 = 1, nelement-2
-        r(i1*2) = dx * float(i1)
-        r(i1*2+1) = dx * float(i1)
+        r(i1*2) = rgrid(i1)
+        r(i1*2+1) = rgrid(i1)
       enddo
     else
       dx = 1. / real(nfieldoutput - 1)

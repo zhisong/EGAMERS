@@ -88,7 +88,16 @@ module nl
   
   ! number of radial grid points
   integer :: nradial_grid = 30
-  
+  ! type of the grid
+  integer :: igrid_type = 1
+  !                    = 1 for equidistant grid
+  !                    = 2 for Gaussian packed grid (XR1, XR2, SIG1, SIG2)
+  ! for igrid_type == 1 :
+  real    :: xr1       = 999.9
+  real    :: xr2       = 999.9
+  real    :: sig1      = 999.9
+  real    :: sig2      = 999.9
+
   ! number of mub0 grid points for trapped particles
   integer :: ngtrap_mub0 = 10
   ! mub0 grid starts and ends at (in keV)
@@ -208,7 +217,8 @@ contains
          dtorbitn, dtorbitb, erreig, nmaxit
     ! grid settings
     namelist /GRID/ nradial_grid, ngtrap_mub0, trap_mub0start, trap_mub0end,&
-         ngtrap_energyn, ngtrap_energyb, trap_ebend, ngtrap_pphi, ipphi_eqdistant
+         ngtrap_energyn, ngtrap_energyb, trap_ebend, ngtrap_pphi, ipphi_eqdistant,&
+         igrid_type, xr1, xr2, sig1, sig2
     ! physics settings
     namelist /PHYS/ af, zf, ai, R0, a, B0
     ! plasma equilibrium profiles
