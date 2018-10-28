@@ -92,9 +92,9 @@ contains
     if (lfieldoutput .eq. 0) then   
       r(1) = 0.0
       r(NR) = 1.0
-      do i1 = 1, nelement-2
-        r(i1*2) = rgrid(i1)
-        r(i1*2+1) = rgrid(i1)
+      do i1 = 2, nelement-1
+        r(i1*2-2) = rgrid(i1)
+        r(i1*2-1) = rgrid(i1)
       enddo
     else
       dx = 1. / real(nfieldoutput - 1)
