@@ -74,10 +74,11 @@ contains
       call particles_init(dotgc(i1), nmarkers)
       call particles_init(gcsum(i1), nmarkers)
       call particles_init(gcorg(i1), nmarkers)
-      call particles_aux_init(gc_aux(i1), nmarkers)
+      call particles_aux_init(gc_aux(i1), gc(i1))
 
       ! load the particles
-      call particles_loading_trap(gc(i1), gc_aux(i1), tm, i1, 0.2)
+      call particles_loading_trap(gc(i1), gc_aux(i1), tm%grid(i1), &
+          tm%mub0_table(2)-tm%mub0_table(1), 0.2)
     end do
 
   end subroutine pic_init
@@ -128,7 +129,7 @@ contains
 
         if (.not. mpi_is_my_work(lwork, i1)) cycle
 
-        call particles_push_trap(dotgc(i1), vtemp, gc(i1), gc_aux(i1), efield, tm, i1)
+        call particles_push_trap(dotgc(i1), vtemp, gc(i1), gc_aux(i1), efield, tm%grid(i1))
         vfast1(:) = vfast1(:) + vtemp(:)
 
         if (rkstep.eq.1) then

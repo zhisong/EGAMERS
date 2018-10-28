@@ -18,10 +18,43 @@ module io
   integer, parameter :: ioorbit    = 23  ! orbit file
 
 #ifdef NC
+  character (len = *), parameter :: FIELD_FILE = "snapshot.field.nc"
+  character (len = *), parameter :: PART_FILE = "snapshot.part.nc"
+  character (len = *), parameter :: TESTPART_FILE = "snapshot.testpart.nc"
+  character (len = *), parameter :: NR_NAME = "radial_element"
+  character (len = *), parameter :: REC_NAME = "time"
+  character (len = *), parameter :: ETA_NAME = "eta"
+  character (len = *), parameter :: LAMBDA_NAME = "lambda"
+  character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
+
+  character (len = *), parameter :: ENERGY_NAME = "energy"
+  character (len = *), parameter :: PPHI_NAME = "pphi"
+  character (len = *), parameter :: MUB0_NAME = "mub0"
+  character (len = *), parameter :: THETA_NAME = "theta"
+  character (len = *), parameter :: DELTAF_NAME = "deltaf"
+  character (len = *), parameter :: FULLF_NAME = "fullf"
+  character (len = *), parameter :: OMEGAB_NAME = "omega_b"
+  character (len = *), parameter :: ACTIVE_NAME = "active"
+  character (len = *), parameter :: ID_NAME = "id"
+  
+  character (len = *), parameter :: UNIT_NAME = "unit"
+  character (len = *), parameter :: EPSI_NAME = "e*psi1"
+  character (len = *), parameter :: KEV_NAME = "keV"
+  character (len = *), parameter :: SECOND_NAME = "second"
+  
+
   integer, parameter :: NFIELD_DIMS = 2
   integer, private :: ncid_field, ncid_part
-  integer, private :: nr_dimid, rec_dimid, nr_varid, rec_varid, eta_varid, lambda_varid
+  integer, private :: nr_dimid, rec_dimid
+  integer, private :: nr_varid, rec_varid, eta_varid, lambda_varid
   integer, private :: irec, NR
+
+  integer, parameter ::NTESTPART_DIMS = 2
+  integer, private :: ncid_testpart
+  integer, private :: t_dimid, id_dimid
+  integer, private :: energy_varid, theta_varid, deltaf_varid, fullf_varid, omegab_varid
+  integer, private :: t_varid, pphi_varid, mub0_varid, active_varid
+  integer, private :: irec_test
 #else
   integer, parameter :: iosnapfield= 24  ! field snapshot file
   integer, parameter :: iosnappart = 25  ! particle snapshot file
@@ -31,18 +64,14 @@ contains
 
 ! ////// OUTPUT //////
 
-  subroutine io_snapshot_init()
+  subroutine io_snapshot_init(start_idx)
     ! initialize the snapshot files
     use radial_grid
+    implicit none
+
+    integer, intent(in), optional :: start_idx
 
 #ifdef NC
-    character (len = *), parameter :: FIELD_FILE = "snapshot.field.nc"
-    character (len = *), parameter :: PART_FILE = "snapshot.part.nc"
-    character (len = *), parameter :: NR_NAME = "radial_element"
-    character (len = *), parameter :: REC_NAME = "time"
-    character (len = *), parameter :: ETA_NAME = "eta"
-    character (len = *), parameter :: LAMBDA_NAME = "lambda"
-    character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
 
     ! For the field, we are writing a 2D data, in grid of nele and t
     integer :: dimids(NFIELD_DIMS)
@@ -70,6 +99,7 @@ contains
 
     ! Define variable
     call check( nf90_def_var(ncid_field, REC_NAME, NF90_REAL8, rec_dimid, rec_varid) )
+    call check( nf90_put_att(ncid_field, rec_varid, UNIT_NAME, SECOND_NAME) )
 
     dimids = (/ nr_dimid, rec_dimid /)
 
@@ -106,8 +136,12 @@ contains
     call check( nf90_put_var(ncid_field, nr_varid, r) )
     if (ALLOCATED(r)) deallocate(r)
 
-    ! record counter = 0
-    irec = 0
+    ! record counter = 0 or start_idx
+    if (PRESENT(start_idx)) then
+      irec = start_idx
+    else
+      irec = 0
+    end if
 
 #else
     if (lfieldoutput .lt. 0 .or. lfieldoutput .gt. 1) then
@@ -229,6 +263,230 @@ contains
 #endif
 
   end subroutine io_snapshot_field
+
+  subroutine io_read_field_init(nt_records, nr_records)
+  ! initializing, reading from saved field
+    implicit none
+    integer, intent(out) :: nt_records, nr_records
+
+    integer :: nt, lfieldoutput_local
+
+#ifdef NC
+    call check( nf90_open(FIELD_FILE, nf90_nowrite, ncid_field) )
+    
+    ! get dimension id
+    call check( nf90_inq_dimid(ncid_field, REC_NAME, rec_dimid) )
+    call check( nf90_inq_dimid(ncid_field, NR_NAME, nr_dimid) )
+
+    ! enquire dimension
+    call check( nf90_inquire_dimension(ncid_field, rec_dimid, len=nt) )
+    call check( nf90_inquire_dimension(ncid_field, nr_dimid, len=NR) )
+    nt_records = nt
+    nr_records = NR
+
+    ! get variable id
+    call check( nf90_inq_varid(ncid_field, REC_NAME, rec_varid) )
+    call check( nf90_inq_varid(ncid_field, NR_NAME, nr_varid) )
+    call check( nf90_inq_varid(ncid_field, ETA_NAME, eta_varid) )
+    call check( nf90_inq_varid(ncid_field, LAMBDA_NAME, lambda_varid) )
+
+    ! get the attribute
+    call check( nf90_get_att(ncid_field, nr_varid, LFIELDOUTPUT_NAME, lfieldoutput_local) )
+    if (lfieldoutput_local .ne. 0) then
+      stop "Only field data for lfieldoutput=0 runs can be read"
+    endif
+
+#else
+#endif
+  end subroutine io_read_field_init
+
+  subroutine io_read_field_destroy()
+    implicit none
+    call check( nf90_close(ncid_field) )
+  end subroutine io_read_field_destroy
+
+  subroutine io_read_field(t_now, lambda_t, eta_t, idx)
+    ! read the evolution of field from file
+    implicit none
+    integer, intent(in) :: idx
+    real, intent(out) :: t_now
+    real, dimension(:) :: lambda_t, eta_t
+
+#ifdef NC
+    real :: t_temp(1)
+    integer :: start(NFIELD_DIMS), counts(NFIELD_DIMS)
+
+    start = (/1, idx/)
+    counts = (/NR, 1/)
+
+    call check( nf90_get_var(ncid_field, rec_varid, t_temp, start=(/idx/), count=(/1/)) )
+    t_now = t_temp(1)
+    call check( nf90_get_var(ncid_field, lambda_varid, lambda_t, start=start, count=counts) )
+    call check( nf90_get_var(ncid_field, eta_varid, eta_t, start=start, count=counts) )
+#else
+#endif
+
+  end subroutine io_read_field
+    
+  subroutine io_snapshot_test_particles_init()
+  ! initialize the snapshot file for test particles
+    use profile, only : psi1
+    use paras_phy, only : ei, eunit
+    use test_particles
+    use mpi
+    implicit none
+    
+#ifdef NC
+
+    integer :: dimids(NTESTPART_DIMS)
+    integer :: i1, ntotal, neach
+    real, dimension(:), allocatable :: tmpdata
+
+    ntotal = gc_test%n_mub0
+    neach = gc_test % n
+
+    ! Create the file on master node
+    if (mpi_is_master()) then
+      call check( nf90_create(TESTPART_FILE, IOR(nf90_clobber,nf90_share), ncid_testpart) )
+
+      ! Define the dimensions. The t dimension is defined to have
+      ! unlimited length - it can grow as needed.
+      call check( nf90_def_dim(ncid_testpart, ID_NAME, ntotal, id_dimid) )
+      call check( nf90_def_dim(ncid_testpart, REC_NAME, NF90_UNLIMITED, t_dimid) )
+
+      ! Define variable
+      call check( nf90_def_var(ncid_testpart, REC_NAME, NF90_REAL8, t_dimid, t_varid) )
+
+      dimids = (/ id_dimid, t_dimid /)
+      ! Pphi
+      call check( nf90_def_var(ncid_testpart, PPHI_NAME, NF90_REAL8, (/id_dimid/), pphi_varid) )
+      call check( nf90_def_var(ncid_testpart, MUB0_NAME, NF90_REAL8, varid=mub0_varid) )
+      
+      ! Energy, theta, deltaf, fullf, omegab
+      call check( nf90_def_var(ncid_testpart, ENERGY_NAME, NF90_REAL8, dimids, energy_varid) )
+      call check( nf90_def_var(ncid_testpart, THETA_NAME, NF90_REAL8, dimids, theta_varid) )
+      call check( nf90_def_var(ncid_testpart, DELTAF_NAME, NF90_REAL8, dimids, deltaf_varid) )
+      call check( nf90_def_var(ncid_testpart, FULLF_NAME, NF90_REAL8, dimids, fullf_varid) )
+      call check( nf90_def_var(ncid_testpart, OMEGAB_NAME, NF90_REAL8, dimids, omegab_varid) )
+      call check( nf90_def_var(ncid_testpart, ACTIVE_NAME, NF90_INT, dimids, active_varid) )      
+
+      call check( nf90_put_att(ncid_testpart, mub0_varid, UNIT_NAME, KEV_NAME) )
+      call check( nf90_put_att(ncid_testpart, pphi_varid, UNIT_NAME, EPSI_NAME) )
+      call check( nf90_put_att(ncid_testpart, pphi_varid, EPSI_NAME, ei * psi1) )
+      
+      call check( nf90_enddef(ncid_testpart) )
+
+      call check( nf90_put_var(ncid_testpart, mub0_varid, mub0_test) )
+      
+      call check( nf90_close(ncid_testpart) )
+    endif
+    
+    call mpi_sync()
+    
+    ! open on other cpus
+    ! if (.not. mpi_is_master()) then
+
+      call check( nf90_open(TESTPART_FILE, IOR(nf90_write,nf90_share), ncid_testpart) )
+      
+      call check( nf90_inq_varid(ncid_testpart, REC_NAME, t_varid) )
+      call check( nf90_inq_varid(ncid_testpart, PPHI_NAME, pphi_varid) )
+      call check( nf90_inq_varid(ncid_testpart, ENERGY_NAME, energy_varid) )
+      call check( nf90_inq_varid(ncid_testpart, THETA_NAME, theta_varid) )
+      call check( nf90_inq_varid(ncid_testpart, DELTAF_NAME, deltaf_varid) )
+      call check( nf90_inq_varid(ncid_testpart, FULLF_NAME, fullf_varid) )
+      call check( nf90_inq_varid(ncid_testpart, OMEGAB_NAME, omegab_varid) )
+      call check( nf90_inq_varid(ncid_testpart, ACTIVE_NAME, active_varid) )
+
+    ! endif
+
+    ! now first dump pphi value
+    allocate(tmpdata(neach))
+    do i1 = 1, neach
+      tmpdata(i1) = tg_test%pphigrid(gc_test_aux%grid_id(i1, 1)) / ei / psi1
+    enddo
+    call check( nf90_put_var(ncid_testpart, pphi_varid, tmpdata, start = (/gc_test%istart/), &
+                              count = (/neach/)) )
+    if (ALLOCATED(tmpdata)) deallocate(tmpdata)
+
+    irec_test = 0
+
+#endif
+  end subroutine io_snapshot_test_particles_init  
+
+  subroutine io_snapshot_test_particles_destroy()
+    call check( nf90_close(ncid_testpart))
+  end subroutine io_snapshot_test_particles_destroy 
+
+  subroutine io_snapshot_test_particles()
+    use paras_phy, only : pi
+    use distribution_fun, only : f0
+    use trap_grid, only : getperiod
+    use test_particles
+    use mpi
+    ! write the test particles state to file
+    integer, parameter :: NTEMP = 2
+    integer :: start(NTESTPART_DIMS), counts(NTESTPART_DIMS)
+    real, dimension(:,:), allocatable :: tempdata(:,:)
+    real :: ee, mub0, pphi, period, dperiod(4)
+    integer :: ipphi, i1, i2, ncpus
+    irec_test = irec_test + 1
+
+    allocate(tempdata(gc_test%n, NTEMP))
+
+    start = (/gc_test%istart, irec_test/)
+    counts = (/gc_test%n, 1/)
+
+    !if (mpi_is_master()) then
+      call check( nf90_put_var(ncid_testpart, t_varid, (/t_test/), start = (/irec_test/), &
+                               count = (/1/) ) )                               
+    !end if 
+    call check( nf90_sync(ncid_testpart) )
+
+#ifndef NCPAR
+    call mpi_sync()
+
+    ncpus = mpi_get_ncpus();
+    do i2 = 0, ncpus-1
+      if (i2 .eq. mpi_get_rank()) then
+#endif
+!     write(*,*) i1, start, counts
+    call check( nf90_put_var(ncid_testpart, energy_varid, gc_test%state(:,1),&
+                start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, theta_varid, gc_test%state(:,2),&
+                start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, deltaf_varid, gc_test%state(:,3),&
+                start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, active_varid, gc_test_aux%active,&
+                start=start, count=counts) )
+
+    ! now we calculate the period and full f
+    do i1 = 1, gc_test%n
+      ee = gc_test%state(i1, 1)
+      mub0 = gc_test_aux%mub0
+      ipphi = gc_test_aux%grid_id(i1, 1)
+      pphi = tg_test%pphigrid(ipphi)
+      call getperiod(tg_test, ee, ipphi, period, dperiod)
+      tempdata(i1, 1) = 2 * pi / period
+      tempdata(i1, 2) = f0(ee, mub0, pphi)
+    end do
+
+    call check( nf90_put_var(ncid_testpart, omegab_varid, tempdata(:,1),&
+                start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, fullf_varid, tempdata(:,2),&
+                start=start, count=counts) )
+
+    if (ALLOCATED(tempdata)) deallocate(tempdata)
+#ifndef NCPAR
+      end if    
+      call mpi_sync()
+      call check( nf90_sync(ncid_testpart) )
+    end do
+#else
+      call mpi_sync()
+      call check( nf90_sync(ncid_testpart) )
+#endif    
+
+  end subroutine io_snapshot_test_particles
 
   subroutine plotcontinuum()
     ! plot the bulk continuum and omega of the global mode

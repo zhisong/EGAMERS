@@ -18,13 +18,14 @@ program EGAMERS
   use trap_grid
   use eigen
   use pic
+  use test_particles
   use orbit_classify, only : tpbound
   implicit none
   
   integer, parameter :: nmax = 2000
   type(matrix) :: mat3
   type(tgrid) :: tg1
-  integer :: ierr, i1, i2, n_active
+  integer :: ierr, i1, i2, n_active, nt, nr
 
   real, dimension(:), allocatable :: rdata, thetadata
   real :: perioddata, ee, mub0, pphi, eetpbound
@@ -249,11 +250,91 @@ program EGAMERS
       deallocate(rdata)
       deallocate(thetadata)
     endif
+  
+  else if (imode .eq. 4) then
+  ! test particle mode
+#ifndef NC
+    if (mpi_is_master()) then
+      write(*,*) "Currently we only support field snapshot in NETCDF format. Please recompile with NETCDF" 
+    end if
+    stop "NETCDF needed for test particle mode"
+#endif 
+
+    if (mpi_is_master()) then
+      write(*,*) 'Test particle mode'
+      write(*,*) 'mub0 = ', mub0_test, 'keV'
+      write(*,'(A26)', ADVANCE='no') 'Reading field snapshot...'
+      call io_read_field_init(nt, nr)
+      if (nr .ne. nradial_grid*2-2) then 
+        stop "radial grid from namelist and field data does not match"
+      end if
+
+      ! allocate the space
+      allocate(t_list(nt))
+      allocate(lambda_t(nr, nt))
+      allocate(eta_t(nr, nt))
+
+      do i1 = 1, nt
+        call io_read_field(t_list(i1), lambda_t(:,i1), eta_t(:,i1), i1)
+      end do
+ 
+      call io_read_field_destroy()
+
+      write(*,*) 'Successful'
+      write(*,*) 'Containing: ', nt, 'steps, total ', t_list(nt)*1000, 'ms'
+      write(*,*) 'Calculating orbits...'
+    end if
+
+    call mpi_sync()
+
+    call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
+    call sintable_init(nmax, np_trap)
+
+    mub0 = mub0_test * 1000. * eunit    
+    ! calculate frequency for trap grid
+    call tgrid_init(tg_test, mub0, ngtrap_pphi, ngtrap_energyn, &
+                    ngtrap_energyb, trap_ebend, np_trap, ipphi_eqdistant)
+    call tgrid_calculate(tg_test)
+
+    call mpi_sync()
+
+    if (mpi_is_master()) write(*,*) 'Initialing Particles...'
+
+    call test_pic_init()
+    call io_snapshot_test_particles_init()
+    
+    if (mpi_is_master()) write(*,*) 'steps =', 0
+
+    i2 = -1
+    do i1 = 1, ksteps_test
+      call test_pic_step()
+      if (mpi_is_master() .and. MOD(i1, nscreen_test).eq.0) then
+        write(*,*) 'steps =', i1
+      end if
+      call mpi_sync()
+      if (i1 .ge. ksteps_snapstart) i2 = i2 + 1
+      if (i2 .ge. 0 .and. (MOD(i2, nsnappart_test).eq.0 .or. i1.eq.ksteps)) call io_snapshot_test_particles()
+      call mpi_sync()
+    end do
+
+    ! cleaning up
+    call io_snapshot_test_particles_destroy()
+    call test_pic_destroy()
+    call tgrid_destroy(tg_test)
+
+    call rgrid_destroy()
+    call sintable_destroy()
+    
+    if (mpi_is_master()) then
+      if (ALLOCATED(t_list)) deallocate(t_list)
+      if (ALLOCATED(lambda_t)) deallocate(lambda_t)
+      if (ALLOCATED(eta_t)) deallocate(eta_t)
+    end if
 
   else
     ! wrong input
     if (mpi_is_master()) then
-      write(*,*) 'Only imode = 1~3 are supported currently'
+      write(*,*) 'Only imode = 1~4 are supported currently'
       write(*,*) 'Please refer to io.f90 for more information'
       write(*,*)
     endif
