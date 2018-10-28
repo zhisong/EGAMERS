@@ -26,14 +26,15 @@
 
 # NETCDF
 # compile without NETCDF (output binary unformatted data), use NETCDF = no
-# compile with NETCDF (output NETCDF format), use NETCDF = yes
+# compile with serial NETCDF (output NETCDF format), use NETCDF = serial
+# compile with parallel NETCDF, use NETCDF = parallel
 # !! NETCDF is a stucture for output data, can be easily read by Python or Matlab
 # !! NOTE: NETCDF/binary will only be used for PIC output, other modes will output text files
 
 COMPILER = gfortran
 MKL = no
 MPI = yes
-NETCDF = yes
+NETCDF = serial
 # The path to NETCDF, please adjust
 NETCDF_INCLUDE = /usr/include/
 #NETCDF_INCLUDE = $(NETCDFHOME)/include
@@ -69,11 +70,17 @@ ifeq ($(MPI), yes)
   MACRO += -DMPI
 endif
 
-ifeq ($(NETCDF), yes)
+ifeq ($(NETCDF), serial)
   MACRO += -DNC
   LIB += -lnetcdff -L$(NETCDF_LIB)
   INCLUDE += -I$(NETCDF_INCLUDE)
 endif
+ifeq ($(NETCDF), parallel)
+  MACRO += -DNC -DNCPAR
+  LIB += -lnetcdff -L$(NETCDF_LIB)
+  INCLUDE += -I$(NETCDF_INCLUDE)
+endif
+
 
 all :	$(OBJS)
 	$(FC) ${FFLAGS} ${MACRO} -o $(TARGET) $(MODULES) $(OBJS) $(LIB)

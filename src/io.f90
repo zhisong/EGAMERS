@@ -373,11 +373,13 @@ contains
 
       call check( nf90_put_var(ncid_testpart, mub0_varid, mub0_test) )
       
+      call check( nf90_close(ncid_testpart) )
     endif
     
     call mpi_sync()
-
-    if (.not. mpi_is_master()) then
+    
+    ! open on other cpus
+    ! if (.not. mpi_is_master()) then
 
       call check( nf90_open(TESTPART_FILE, IOR(nf90_write,nf90_share), ncid_testpart) )
       
@@ -390,7 +392,7 @@ contains
       call check( nf90_inq_varid(ncid_testpart, OMEGAB_NAME, omegab_varid) )
       call check( nf90_inq_varid(ncid_testpart, ACTIVE_NAME, active_varid) )
 
-    endif
+    ! endif
 
     ! now first dump pphi value
     allocate(tmpdata(neach))
@@ -415,13 +417,13 @@ contains
     use distribution_fun, only : f0
     use trap_grid, only : getperiod
     use test_particles
-    use mpi, only : mpi_is_master
+    use mpi
     ! write the test particles state to file
     integer, parameter :: NTEMP = 2
     integer :: start(NTESTPART_DIMS), counts(NTESTPART_DIMS)
     real, dimension(:,:), allocatable :: tempdata(:,:)
     real :: ee, mub0, pphi, period, dperiod(4)
-    integer :: ipphi, i1
+    integer :: ipphi, i1, i2, ncpus
     irec_test = irec_test + 1
 
     allocate(tempdata(gc_test%n, NTEMP))
@@ -429,38 +431,55 @@ contains
     start = (/gc_test%istart, irec_test/)
     counts = (/gc_test%n, 1/)
 
-    if (mpi_is_master()) then
+    !if (mpi_is_master()) then
       call check( nf90_put_var(ncid_testpart, t_varid, (/t_test/), start = (/irec_test/), &
-                               count = (/1/) ) )
-    end if
+                               count = (/1/) ) )                               
+    !end if 
+    call check( nf90_sync(ncid_testpart) )
 
+#ifndef NCPAR
+    call mpi_sync()
+
+    ncpus = mpi_get_ncpus();
+    do i2 = 0, ncpus-1
+      if (i2 .eq. mpi_get_rank()) then
+#endif
+!     write(*,*) i1, start, counts
     call check( nf90_put_var(ncid_testpart, energy_varid, gc_test%state(:,1),&
                 start=start, count=counts) )
-    ! call check( nf90_put_var(ncid_testpart, theta_varid, gc_test%state(:,2),&
-    !             start=start, count=counts) )
-    ! call check( nf90_put_var(ncid_testpart, deltaf_varid, gc_test%state(:,3),&
-    !             start=start, count=counts) )
-    ! call check( nf90_put_var(ncid_testpart, active_varid, gc_test_aux%active,&
-    !             start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, theta_varid, gc_test%state(:,2),&
+                start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, deltaf_varid, gc_test%state(:,3),&
+                start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, active_varid, gc_test_aux%active,&
+                start=start, count=counts) )
 
-    ! ! now we calculate the period and full f
-    ! do i1 = 1, gc_test%n
-    !   ee = gc_test%state(i1, 1)
-    !   mub0 = gc_test_aux%mub0
-    !   ipphi = gc_test_aux%grid_id(i1, 1)
-    !   pphi = tg_test%pphigrid(ipphi)
-    !   call getperiod(tg_test, ee, ipphi, period, dperiod)
-    !   tempdata(i1, 1) = 2 * pi / period
-    !   tempdata(i1, 2) = f0(ee, mub0, pphi)
-    ! end do
+    ! now we calculate the period and full f
+    do i1 = 1, gc_test%n
+      ee = gc_test%state(i1, 1)
+      mub0 = gc_test_aux%mub0
+      ipphi = gc_test_aux%grid_id(i1, 1)
+      pphi = tg_test%pphigrid(ipphi)
+      call getperiod(tg_test, ee, ipphi, period, dperiod)
+      tempdata(i1, 1) = 2 * pi / period
+      tempdata(i1, 2) = f0(ee, mub0, pphi)
+    end do
 
-    ! call check( nf90_put_var(ncid_testpart, omegab_varid, tempdata(:,1),&
-    !             start=start, count=counts) )
-    ! call check( nf90_put_var(ncid_testpart, fullf_varid, tempdata(:,2),&
-    !             start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, omegab_varid, tempdata(:,1),&
+                start=start, count=counts) )
+    call check( nf90_put_var(ncid_testpart, fullf_varid, tempdata(:,2),&
+                start=start, count=counts) )
 
     if (ALLOCATED(tempdata)) deallocate(tempdata)
-    !call check( nf90_sync(ncid_testpart) )
+#ifndef NCPAR
+      end if    
+      call mpi_sync()
+      call check( nf90_sync(ncid_testpart) )
+    end do
+#else
+      call mpi_sync()
+      call check( nf90_sync(ncid_testpart) )
+#endif    
 
   end subroutine io_snapshot_test_particles
 
