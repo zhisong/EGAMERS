@@ -264,12 +264,14 @@ contains
 
   end subroutine io_snapshot_field
 
-  subroutine io_read_field_init(nt_records, nr_records)
+  subroutine io_read_field_init(nt_records, nr_records, rgrid_array)
   ! initializing, reading from saved field
     implicit none
     integer, intent(out) :: nt_records, nr_records
+    real, dimension(:), intent(out) :: rgrid_array
 
-    integer :: nt, lfieldoutput_local
+    integer :: nt, lfieldoutput_local, i1
+    real, dimension(:), allocatable :: rgrid_tmp
 
 #ifdef NC
     call check( nf90_open(FIELD_FILE, nf90_nowrite, ncid_field) )
@@ -296,6 +298,20 @@ contains
       stop "Only field data for lfieldoutput=0 runs can be read"
     endif
 
+    NR = NR / 2 + 1
+    if (size(rgrid_array) .ne. NR) stop "nradial_grid does not match snapshot"
+
+    allocate(rgrid_tmp(nr_records))
+
+    call check( nf90_get_var(ncid_field, nr_varid, rgrid_tmp) )
+    rgrid_array(1) = rgrid_tmp(1)
+    rgrid_array(NR) = rgrid_tmp(nr_records)
+    do i1 = 2, NR-1
+      rgrid_array(i1) = rgrid_tmp(i1 * 2 - 2)
+    enddo
+    
+    if (ALLOCATED(rgrid_tmp)) deallocate(rgrid_tmp)
+    
 #else
 #endif
   end subroutine io_read_field_init

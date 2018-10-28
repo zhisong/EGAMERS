@@ -264,7 +264,9 @@ program EGAMERS
       write(*,*) 'Test particle mode'
       write(*,*) 'mub0 = ', mub0_test, 'keV'
       write(*,'(A26)', ADVANCE='no') 'Reading field snapshot...'
-      call io_read_field_init(nt, nr)
+      call rgrid_init(nradial_grid, igrid_type, xr1, sig1, xr2, sig2)    
+
+      call io_read_field_init(nt, nr, rgrid)
       if (nr .ne. nradial_grid*2-2) then 
         stop "radial grid from namelist and field data does not match"
       end if
@@ -287,7 +289,6 @@ program EGAMERS
 
     call mpi_sync()
 
-    call rgrid_init(nradial_grid, 1, 0., 0., 0., 0.)
     call sintable_init(nmax, np_trap)
 
     mub0 = mub0_test * 1000. * eunit    
