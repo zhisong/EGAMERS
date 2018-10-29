@@ -38,7 +38,7 @@ module io
   character (len = *), parameter :: ID_NAME = "id"
   
   character (len = *), parameter :: UNIT_NAME = "unit"
-  character (len = *), parameter :: EPSI_NAME = "e*psi1"
+  character (len = *), parameter :: EPSI_NAME = "epsi1"
   character (len = *), parameter :: KEV_NAME = "keV"
   character (len = *), parameter :: SECOND_NAME = "second"
   
@@ -485,6 +485,7 @@ contains
       tempdata(i1, 1) = 2 * pi / period
       tempdata(i1, 2) = f0(ee, mub0, pphi)
     end do
+    tempdata(:,2) = tempdata(:,2) + gc_test%state(:,3)
 
     call check( nf90_put_var(ncid_testpart, omegab_varid, tempdata(:,1),&
                 start=start, count=counts) )

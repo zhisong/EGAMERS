@@ -264,8 +264,11 @@ program EGAMERS
       write(*,*) 'Test particle mode'
       write(*,*) 'mub0 = ', mub0_test, 'keV'
       write(*,'(A26)', ADVANCE='no') 'Reading field snapshot...'
-      call rgrid_init(nradial_grid, igrid_type, xr1, sig1, xr2, sig2)    
+    end if
+      
+    call rgrid_init(nradial_grid, igrid_type, xr1, sig1, xr2, sig2)    
 
+    if (mpi_is_master()) then
       call io_read_field_init(nt, nr, rgrid)
       if (nr .ne. nradial_grid*2-2) then 
         stop "radial grid from namelist and field data does not match"
@@ -286,6 +289,9 @@ program EGAMERS
       write(*,*) 'Containing: ', nt, 'steps, total ', t_list(nt)*1000, 'ms'
       write(*,*) 'Calculating orbits...'
     end if
+
+    ! now bcast the grid read from file to all cpus
+    call mpi_bcast_array(rgrid, 0)
 
     call mpi_sync()
 
