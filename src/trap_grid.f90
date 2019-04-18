@@ -365,6 +365,7 @@ contains
              ! TYPE II t/p boundary found
              ! no special treatment for the t/p boundary
              this%ibstart = ipos
+             if (itrapextend .eq. 1) this%etpbound(i3) = trapextend(mub0, this%pphigrid(i3), this%etpbound(i3))
           end if
           ! calculate the lowest energy of trapped particles
 

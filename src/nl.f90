@@ -118,7 +118,11 @@ module nl
   integer :: ipphi_eqdistant = 1
   ! ipphi_eqdistant ==1 : equidistant in pphi
   !                 ==2 : equidistant in r
-
+  
+  ! extend the trapped grid on TYPE II boundary to cover some particles in passing regime
+  integer :: itrapextend = 0
+  ! itapextend == 0 : for TYPE II t/p boundary, only calculate up to the boundary
+  !
   ! //////// NAMELIST PHYS ////////
   
   ! namelist memebers in module paras_phy
