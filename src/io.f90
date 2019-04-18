@@ -318,7 +318,9 @@ contains
 
   subroutine io_read_field_destroy()
     implicit none
+#ifdef NC
     call check( nf90_close(ncid_field) )
+#endif
   end subroutine io_read_field_destroy
 
   subroutine io_read_field(t_now, lambda_t, eta_t, idx)
@@ -430,10 +432,13 @@ contains
   end subroutine io_snapshot_test_particles_init  
 
   subroutine io_snapshot_test_particles_destroy()
+#ifdef NC
     call check( nf90_close(ncid_testpart))
+#endif
   end subroutine io_snapshot_test_particles_destroy 
 
   subroutine io_snapshot_test_particles()
+#ifdef NC
     use paras_phy, only : pi
     use distribution_fun, only : f0
     use trap_grid, only : getperiod
@@ -446,7 +451,7 @@ contains
     real :: ee, mub0, pphi, period, dperiod(4)
     integer :: ipphi, i1, i2, ncpus
     irec_test = irec_test + 1
-
+    
     allocate(tempdata(gc_test%n, NTEMP))
 
     start = (/gc_test%istart, irec_test/)
@@ -502,7 +507,7 @@ contains
       call mpi_sync()
       call check( nf90_sync(ncid_testpart) )
 #endif    
-
+#endif
   end subroutine io_snapshot_test_particles
 
   subroutine plotcontinuum()
