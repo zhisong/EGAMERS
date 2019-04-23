@@ -121,6 +121,7 @@ contains
     call mpi_sum_matrix(mat3, tmpmat2, 0)
     ! transfer the data back to mat3
     mat3 = tmpmat2
+    !mat3%data = real(mat3%data)
     
     call matrix_destroy(tmpmat)
     call matrix_destroy(tmpmat2)

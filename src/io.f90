@@ -25,6 +25,8 @@ module io
   character (len = *), parameter :: REC_NAME = "time"
   character (len = *), parameter :: ETA_NAME = "eta"
   character (len = *), parameter :: LAMBDA_NAME = "lambda"
+  character (len = *), parameter :: FENERGY_NAME = "field_energy"
+  character (len = *), parameter :: PENERGY_NAME = "particle_energy"
   character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
 
   character (len = *), parameter :: ENERGY_NAME = "energy"
@@ -46,7 +48,7 @@ module io
   integer, parameter :: NFIELD_DIMS = 2
   integer, private :: ncid_field, ncid_part
   integer, private :: nr_dimid, rec_dimid
-  integer, private :: nr_varid, rec_varid, eta_varid, lambda_varid
+  integer, private :: nr_varid, rec_varid, eta_varid, lambda_varid, fenergy_varid
   integer, private :: irec, NR
 
   integer, parameter ::NTESTPART_DIMS = 2
@@ -105,6 +107,8 @@ contains
 
     call check( nf90_def_var(ncid_field, LAMBDA_NAME, NF90_REAL8, dimids, lambda_varid) )
     call check( nf90_def_var(ncid_field, ETA_NAME, NF90_REAL8, dimids, eta_varid) )
+
+    call check( nf90_def_var(ncid_field, FENERGY_NAME, NF90_REAL8, (/rec_dimid/), fenergy_varid) )
     
     call check( nf90_def_var(ncid_field, NR_NAME, NF90_REAL8, nr_dimid, nr_varid) )
     call check( nf90_put_att(ncid_field, nr_varid, LFIELDOUTPUT_NAME, lfieldoutput) )
@@ -201,6 +205,8 @@ contains
                               count = counts) )      
       call check( nf90_put_var(ncid_field, eta_varid, ev%eta, start = start, &
                               count = counts) ) 
+      call check( nf90_put_var(ncid_field, fenergy_varid, (/fenergy/),  start = (/irec/), &
+                              count = (/1/) ) ) 
 #else
       write(iosnapfield) ev%lambda(1:nele)
       write(iosnapfield) ev%eta(1:nele)
