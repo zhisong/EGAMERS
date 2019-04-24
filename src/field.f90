@@ -9,7 +9,9 @@ use radial_grid, only : nele
 implicit none
 
 private
-type(matrix) :: mat1, mat2, mat1_qr ! MHD matrics M, N and QR decompose of M
+type(matrix), public :: mat1, mat2  ! MHD matrics M1, M2
+
+type(matrix) :: mat1_qr !QR decompose of M1
 integer, allocatable, dimension(:) :: pmat ! QR decompose indices of M
 complex, allocatable, dimension(:) :: vwork, tdotv ! temp working space
 
@@ -23,7 +25,7 @@ type, public :: field_vector
 end type field_vector
 
 public :: field_vector_init, field_vector_destroy, field_vector_bcast, &
-          field_evolve, field_matrix_init, field_matrix_destroy, field_energy
+          field_evolve, field_matrix_init, field_matrix_destroy
 
 contains
 
@@ -166,17 +168,5 @@ contains
     dotevector%eta(:) = real(vwork(:)) - 2.0 * gamma_d * evector%eta(:)
 
   end subroutine field_evolve
-
-  real function field_energy(evector)
-    ! computes the field energy
-    implicit none
-
-    type(field_vector) :: evector
-    real :: kinetic_energy, potential_energy
-    
-    kinetic_energy = SUM(evector%eta * MATMUL(mat1%data, evector%eta))
-    potential_energy = SUM(evector%lambda * MATMUL(mat2%data, evector%lambda))
-    
-  end function field_energy
 
 end module field

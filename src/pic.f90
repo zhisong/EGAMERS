@@ -32,7 +32,7 @@ implicit none
   integer, public :: nsnappart  = 1000     ! particle output inteval in steps
 ! ////////////////////////////////
 
-  public :: pic_init, pic_step, pic_destroy, pic_active_particles
+  public :: pic_init, pic_step, pic_destroy
 
 contains
 
@@ -210,21 +210,5 @@ contains
     t = t + dt
 
   end subroutine pic_step
-
-  function pic_active_particles()
-    ! return the number of active particles in the system
-    integer :: pic_active_particles
-    integer :: i1, n_active, n_tmp
-
-    n_active = 0
-    n_tmp = 0
-    do i1 = 1, tm%ngrid
-      if (.not. mpi_is_my_work(lwork, i1)) cycle
-      n_tmp = n_tmp + SUM(gc_aux(i1)%active(:))
-    enddo
-
-    call mpi_sum_scalar(n_tmp, n_active, 0)
-    pic_active_particles = n_active
-  end function pic_active_particles
 
 end module pic

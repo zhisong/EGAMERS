@@ -18,6 +18,7 @@ program EGAMERS
   use trap_grid
   use eigen
   use pic
+  use diagnostics
   use test_particles
   use orbit_classify, only : tpbound
   implicit none
@@ -103,7 +104,8 @@ program EGAMERS
       ! mpi barrier after each time step
       call mpi_sync()
       ! output informations at particular time steps
-      if (MOD(i1, nscreen).eq.0 .or. i1.eq.ksteps) n_active = pic_active_particles()
+      ! the number of the still active trapped particles
+      if (MOD(i1, nscreen).eq.0 .or. i1.eq.ksteps) n_active = diag_active_trap_particles()
       if (mpi_is_master()) then
         ! screen output for every nscreen steps
         if (MOD(i1, nscreen).eq.0 .or. i1.eq.ksteps) then

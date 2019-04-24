@@ -18,17 +18,21 @@ module io
   integer, parameter :: ioorbit    = 23  ! orbit file
 
 #ifdef NC
+  ! NetCDF filenames
   character (len = *), parameter :: FIELD_FILE = "snapshot.field.nc"
   character (len = *), parameter :: PART_FILE = "snapshot.part.nc"
   character (len = *), parameter :: TESTPART_FILE = "snapshot.testpart.nc"
+
+  ! names for field output
   character (len = *), parameter :: NR_NAME = "radial_element"
   character (len = *), parameter :: REC_NAME = "time"
   character (len = *), parameter :: ETA_NAME = "eta"
   character (len = *), parameter :: LAMBDA_NAME = "lambda"
   character (len = *), parameter :: FENERGY_NAME = "field_energy"
-  character (len = *), parameter :: PENERGY_NAME = "particle_energy"
   character (len = *), parameter :: LFIELDOUTPUT_NAME = "lfieldoutput"
 
+  ! names for particle output
+  character (len = *), parameter :: TPENERGY_NAME = "trap_particle_energy"
   character (len = *), parameter :: ENERGY_NAME = "energy"
   character (len = *), parameter :: PPHI_NAME = "pphi"
   character (len = *), parameter :: MUB0_NAME = "mub0"
@@ -39,12 +43,12 @@ module io
   character (len = *), parameter :: ACTIVE_NAME = "active"
   character (len = *), parameter :: ID_NAME = "id"
   
+  ! units
   character (len = *), parameter :: UNIT_NAME = "unit"
   character (len = *), parameter :: EPSI_NAME = "epsi1"
   character (len = *), parameter :: KEV_NAME = "keV"
   character (len = *), parameter :: SECOND_NAME = "second"
   
-
   integer, parameter :: NFIELD_DIMS = 2
   integer, private :: ncid_field, ncid_part
   integer, private :: nr_dimid, rec_dimid
@@ -175,13 +179,14 @@ contains
     ! write the field to file
     use field
     use pic, only : t
+    use diagnostics, only : diag_field_energy
     use radial_grid
     use hermite
     implicit none
     type(field_vector) :: ev
 
     real, dimension(:), allocatable :: er
-    real :: dx, x
+    real :: dx, x, fenergy
     complex :: value
     integer :: i1, i2
 
@@ -199,19 +204,20 @@ contains
                               count = (/1/) ) ) 
 #endif
 
-    if (lfieldoutput .eq. 0) then
+    if (lfieldoutput .eq. 0) then 
+      ! if we decide to put the finite element weight (needed for test particles)
 #ifdef NC
+      ! snapshot the lambda and eta variables
       call check( nf90_put_var(ncid_field, lambda_varid, ev%lambda, start = start, &
                               count = counts) )      
       call check( nf90_put_var(ncid_field, eta_varid, ev%eta, start = start, &
                               count = counts) ) 
-      call check( nf90_put_var(ncid_field, fenergy_varid, (/fenergy/),  start = (/irec/), &
-                              count = (/1/) ) ) 
 #else
       write(iosnapfield) ev%lambda(1:nele)
       write(iosnapfield) ev%eta(1:nele)
 #endif
-    else
+    else 
+      ! if we decide to put the exact value
       allocate(er(nfieldoutput))
       er(:) = 0.0
       dx = 1. / real(nfieldoutput - 1)
@@ -262,6 +268,14 @@ contains
 
     end if
 
+#ifdef NC 
+  ! we only put field energy for netcdf output
+    fenergy = diag_field_energy()
+    call check( nf90_put_var(ncid_field, fenergy_varid, (/fenergy/),  start = (/irec/), &
+                              count = (/1/) ) ) 
+#endif
+
+  ! flush the output file and write to disk
 #ifdef NC
     call check( nf90_sync(ncid_field) )
 #else
