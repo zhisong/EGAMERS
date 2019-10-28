@@ -418,7 +418,7 @@ contains
              ! reduce the number of grid points
              negrid = floor((traplosttmp - this%etrapedge(i3))/dee)  + 1
              ! min 3 grid to allow spline
-             if (negrid .lt. 3) negrid = 3
+             if (negrid .lt. 5) negrid = 5
              ! adjust grid size to let two ends lay on the gridS
              dee = (traplosttmp - this%etrapedge(i3)) / float(negrid - 1)
              call spline_init(this%periodn(i3), negrid)
@@ -624,7 +624,7 @@ contains
           if (istat .ne. 1) then
              this%periodb(i1)%y(i2) = -1.
              write(*,*) 'orbit does not exist on b grid at (muB0,E,ipphi) = ',&
-this%mub0/eunit, ee/eunit, ipos
+               this%mub0/eunit, ee/eunit, ipos
              write(*,*) 'orbit status', istat
           else
              call orbit_int(r, theta, norbitintsample, this%np, work, imin, imax)
@@ -639,7 +639,7 @@ this%mub0/eunit, ee/eunit, ipos
           end if
        end do
     end do
-   
+
     ! calculate all the splines
     do i1 = 1, this%npphin
        call spline_build(this%periodn(i1), 0., 0., 2, 1, this%periodn(i1)%n)

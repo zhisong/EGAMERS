@@ -69,7 +69,7 @@ TE0 = 3.,
 TI0 = 1.,
 QPOLY(1) = 2.,
 QPOLY(2) = 0.,
-QPOLY(3) = 2.,
+QPOLY(3) = 2.
 &END
 
 ! FAST ION DISTRIBUTION FUNCTION

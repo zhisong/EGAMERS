@@ -9,6 +9,8 @@ module paras_phy
   real, parameter :: pi = 3.141592653589
   ! proton mass
   real, parameter :: mp = 1.66e-27
+  ! electron mass
+  real, parameter :: me = 9.109e-31
   ! unit charge
   real, parameter :: eunit = 1.60e-19
 
@@ -33,7 +35,7 @@ module paras_phy
   real :: R0 = 3.0
   ! minor radius (m)
   real :: a = 1.0
-  ! magnetic field strengh (T)
+  ! magnetic field strengh (T)eex
   real :: B0 = 3.5
   ! inverse aspect ratio
   real :: eps

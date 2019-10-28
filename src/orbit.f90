@@ -4,9 +4,9 @@ module orbit
 
   implicit none
   ! subroutine to get orbit data
-  public :: getorbit
+  public :: getorbit, findrstart
   ! private subroutines to find the start point and perform Runge-Kutta method
-  private :: findrstart, getee, getprime, rkstep, rkstepcat
+  private :: getee, getprime, rkstep, rkstepcat
   ! dr/dt and r d theta/dt in drift orbit calculation
   private :: drdt, rdthetadt
 
@@ -85,7 +85,7 @@ contains
           call rkstep(ee, mub0, pphi, dt, rtemp(i), ttemp(i),&
                rtemp(i+1), ttemp(i+1))
        end if
-!!$       write(20,*) rtemp(i+1)*cos(ttemp(i+1)), rtemp(i+1)*sin(ttemp(i+1))
+   !!$       write(20,*) rtemp(i+1)*cos(ttemp(i+1)), rtemp(i+1)*sin(ttemp(i+1))
 
        if (rtemp(i+1) .le. 0.) rtemp(i+1) = 1e-10
        ! check if the orbit is lost
@@ -146,7 +146,7 @@ contains
           dtlast = dtlast / (ttemp(i+1)-ttemp(i))*(ttarget-ttemp(i))
           call rkstep(ee, mub0, pphi, dtlast, rtemp(i), ttemp(i),&
                rtemp(i+1), ttemp(i+1))
-!!$          write(*,*) rtemp(i+1)-rstart, ttemp(i+1)-ttarget
+   !!$          write(*,*) rtemp(i+1)-rstart, ttemp(i+1)-ttarget
           j = j + 1
           ! give up if exceeding the limit
           if (j .ge. nmaxorbitclose) exit

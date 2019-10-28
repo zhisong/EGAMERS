@@ -654,6 +654,41 @@ contains
 
   end subroutine plot_tgrid_map
 
+  ! plot ctp grid
+  subroutine plot_ctpgrid_map(this)
+    ! write to output file the frequency map if imode = 2
+    use ctp_grid
+    use paras_phy, only : ei, pi, eunit
+    use profile, only : psi1
+    implicit none
+
+    type(ctpgrid), intent(in) :: this
+    integer :: i1, i2, ndee
+    real :: dee, ee
+
+    write(iomap,*) this%npphin, this%neen
+
+    do i1 = 1, this%npphin
+      do i2 = 1, this%periodn(i1)%n
+         write(iomap,*) this%pphigrid(i1)/ei/psi1, &
+              this%periodn(i1)%x(i2)/eunit/1000., 2*pi/this%periodn(i1)%y(i2), &
+              this%ctpweight(i2,i1), this%ctpgam(i2,i1)
+      end do
+      ! If there < neen points in spline, duplicate top energy point enough 
+      ! times, for counting purposes when plotting
+      if (this%periodn(i1)%n .ne. this%neen) then
+        ndee = this%neen - this%periodn(i1)%n
+        do i2 = 1, ndee
+          write(iomap,*) this%pphigrid(i1)/ei/psi1, &
+          this%periodn(i1)%x(this%periodn(i1)%n) /eunit/1000., &
+          2*pi/this%periodn(i1)%y(this%periodn(i1)%n), &
+          this%ctpweight(this%periodn(i1)%n,i1), this%ctpgam(this%periodn(i1)%n,i1)
+        end do
+      end if
+    end do
+
+  end subroutine plot_ctpgrid_map
+
   subroutine printorbit(norbit, rdata, thetadata, peroiddata)
     ! write to file the orbit if imode = 3
     ! format : omega     (line 1)

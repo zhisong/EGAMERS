@@ -35,5 +35,43 @@ if itrap == 1 :
     plt.title('Trapped particle frequency map')
     plt.xlabel(r'$P_\varphi / e \Psi$')
     plt.ylabel('E (keV)')
-    plt.show()
 
+
+if (ictp == 1):
+    line2 = f.readline()
+    ctpline = map(int, line2.split())
+    ipphin = ctpline[0]
+    neen = ctpline[1]
+    
+    pphigridn = np.zeros((ipphin, neen), dtype=float)
+    een       = np.zeros((ipphin, neen), dtype=float)
+    fqcn      = np.zeros((ipphin, neen), dtype=float)
+    fqcn2     = np.zeros((ipphin, neen), dtype=float)
+
+    for i1 in range(ipphin):
+        for i2 in range(neen):
+            line = f.readline()
+            data1 = map(float, line.split())
+            pphigridn[i1, i2] = data1[0]
+            een[i1,i2] = data1[1]
+            fqcn[i1,i2] = data1[2]        
+            # fqcn2[i1,i2] = np.abs( data1[2] - 30.0*1000.0*2.0*3.1415 ) # Subtract omega_GAM - TODO
+    
+    plt.figure(2)
+    CS = plt.contourf(pphigridn.reshape(ipphin, neen), een.reshape(ipphin, neen), fqcn.reshape(ipphin, neen),cmap=plt.cm.bone)
+    cbar = plt.colorbar(CS)
+    cbar.ax.set_ylabel(r'$\omega_b$')
+    plt.title('Ctp particle frequency map')
+    plt.xlabel(r'$P_\varphi / e \Psi$')
+    plt.ylabel('E (keV)')
+
+    # plt.figure(3)
+    # CS = plt.contourf(pphigridn.reshape(ipphin, neen), een.reshape(ipphin, neen), fqcn2.reshape(ipphin, neen),cmap=plt.cm.bone)
+    # cbar = plt.colorbar(CS)
+    # cbar.ax.set_ylabel(r'$\omega_b$')
+    # plt.title('Ctp particle frequency map')
+    # plt.xlabel(r'$P_\varphi / e \Psi$')
+    # plt.ylabel('E (keV)')
+
+
+plt.show()

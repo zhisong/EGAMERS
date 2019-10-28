@@ -64,7 +64,7 @@ contains
     type(spline) :: this
     integer, intent(in) :: n
 
-!!$    if (allocated(this%x)) call spline_destroy(this)
+    !!$    if (allocated(this%x)) call spline_destroy(this)
     this%n = n
     allocate(this%x(n))
     allocate(this%y(n))

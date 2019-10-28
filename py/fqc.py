@@ -34,8 +34,13 @@ for i1 in range(neigen):
 #    leg = plt.legend([gg], ['Global Mode ' + str(i1+1)])
 #    ax = plt.gca().add_artist(leg)
 
-plt.legend([ll], ['Thermal GAM'])
-plt.ylabel(r'$Re(\Omega)$')
-plt.xlabel('r')
-plt.title(r'$\gamma/\omega$ = ' + str(gammaglobal[0]/omgglobal[0]))
+fs = 14
+
+plt.legend([ll], ['Thermal GAM'], fontsize=fs)
+plt.ylabel(r'$\omega$ (rad/s)', fontsize=fs)
+plt.xlabel('r/a',fontsize=fs)
+plt.xticks(fontsize=fs)
+plt.yticks(fontsize=fs)
+# plt.title(r'$\gamma/\omega$ = ' + str(gammaglobal[0]/omgglobal[0]))
+plt.tight_layout()
 plt.show()

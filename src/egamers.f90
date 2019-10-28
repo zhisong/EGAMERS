@@ -16,6 +16,8 @@ program EGAMERS
   use radial_grid
   use trap_matrix
   use trap_grid
+  use ctp_matrix
+  use ctp_grid
   use eigen
   use pic
   use diagnostics
@@ -26,10 +28,11 @@ program EGAMERS
   integer, parameter :: nmax = 2000
   type(matrix) :: mat3
   type(tgrid) :: tg1
+  type(ctpgrid) :: ctpg1
   integer :: ierr, i1, i2, n_active, nt, nr
 
   real, dimension(:), allocatable :: rdata, thetadata
-  real :: perioddata, ee, mub0, pphi, eetpbound
+  real :: perioddata, ee, mub0, pphi, eetpbound, ph, pth, ph2, pth2
 
   call mpi_start()
   
@@ -131,27 +134,57 @@ program EGAMERS
     if (mpi_is_master()) write(*,*) 'Eigenvalue solver mode'
 
     call rgrid_init(nradial_grid, igrid_type, xr1, sig1, xr2, sig2)
-    call sintable_init(nmax, np_trap)
-    
-    call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
-                      trap_mub0end*1000.*eunit, ngtrap_pphi, ngtrap_energyn, &
-                      ngtrap_energyb, trap_ebend, np_trap, ipphi_eqdistant, .false., ierr)
-    call tmatrix_calculate(tm)
+
+    if (ienable_ctp .eq. 1) then
+      call sintable_init(nmax, np_ctp)
+
+      call ctpmatrix_init(ctpm, ngctp_mub0, ctp_mub0start*1000.*eunit, &
+      ctp_mub0end*1000.*eunit, ctpgrid_lambda0, ctpgrid_dlambda, ngctp_pphi, ngctp_energyn, np_ctp, .false., ierr)
+
+      call ctpmatrix_calculate(ctpm)
+
+    else
+      call sintable_init(nmax, np_trap)
+      
+      call tmatrix_init(tm, ngtrap_mub0, trap_mub0start*1000.*eunit, &
+                        trap_mub0end*1000.*eunit, ngtrap_pphi, ngtrap_energyn, &
+                        ngtrap_energyb, trap_ebend, np_trap, ipphi_eqdistant, .false., ierr)
+      call tmatrix_calculate(tm)
+    end if
 
     ! we'd better finish the previous step before iterating frequency
     call mpi_sync()
-     
-    call newton_init(omegain(1)**2)
-    call newton_step()
+    
+    if (ictppressure .eq. 1) then
+      ! call pressurectp(ctpm, ph, pth)
+      ! print *, "P_fast pressure: ", ph
+      ! print *, "P_bulk pressure: ", pth
+      ! print *, "Y: ", ph / pth / 2. / (7./4.) ! Y = Ph / (Pth * 2 * gamma)
 
-    if (mpi_is_master()) then
-      call printfield(v)
-      call plotcontinuum()
-    endif
-     
-    call newton_cleanup
+      call pressurectp2(ctpm, ph2, pth2)
+      print *, "P_fast pressure2: ", ph2
+      print *, "P_bulk pressure2: ", pth2
+      print *, "Y2: ", ph2 / pth2 / 2. / (7./4.) ! Y = Ph / (Pth * 2 * gamma)
 
-    call tmatrix_destroy(tm, .false.)
+      
+    else
+      call newton_init(omegain(1)**2)
+      call newton_step(ienable_ctp)
+
+      if (mpi_is_master()) then
+        call printfield(v)
+        call plotcontinuum()
+      end if
+        
+      call newton_cleanup
+    end if
+
+    if (ienable_ctp .eq. 1) then
+      call ctpmatrix_destroy(ctpm, .false.)
+    else
+      call tmatrix_destroy(tm, .false.)
+    end if
+
     call rgrid_destroy()
     call sintable_destroy()
 
@@ -168,23 +201,40 @@ program EGAMERS
       mub0 = mub0_in * 1000. * eunit
 
       call rgrid_init(nradial_grid, igrid_type, xr1, sig1, xr2, sig2)
-      call sintable_init(nmax, np_trap)
+      if (ienable_ctp .eq. 1) then
+        call sintable_init(nmax, np_ctp)
 
-      ! write header of the output file
-      call write_map_header()
+        ! write header of the output file
+        call write_map_header()
 
-      ! calculate frequency for trap grid
-      call tgrid_init(tg1, mub0, ngtrap_pphi, ngtrap_energyn, &
-                      ngtrap_energyb, trap_ebend, np_trap, ipphi_eqdistant)
-      call tgrid_calculate(tg1)
-      ! output trap grid frequency
-      call plot_tgrid_map(tg1)
-      call tgrid_destroy(tg1)
+        ! create grid for ctp particles
+        call ctpgrid_init(ctpg1, mub0, ctpgrid_lambda0, ctpgrid_dlambda, ngctp_pphi, ngctp_energyn, np_ctp)
+        call ctpgrid_calculate(ctpg1)
+
+
+        ! output ctp grid frequency
+        call plot_ctpgrid_map(ctpg1)
+        call ctpgrid_destroy(ctpg1)
+
+      else
+        call sintable_init(nmax, np_trap)
+
+        ! write header of the output file
+        call write_map_header()
+  
+        ! calculate frequency for trap grid
+        call tgrid_init(tg1, mub0, ngtrap_pphi, ngtrap_energyn, &
+                        ngtrap_energyb, trap_ebend, np_trap, ipphi_eqdistant)
+        call tgrid_calculate(tg1)
+        ! output trap grid frequency
+        call plot_tgrid_map(tg1)
+        call tgrid_destroy(tg1)
+      end if
 
       call close_map()
       call rgrid_destroy()
       call sintable_destroy()
-    endif
+    end if
 
   else if (imode .eq. 3) then
     ! imode == 3

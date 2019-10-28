@@ -45,6 +45,12 @@ module nl
   integer :: ienergy_tpbound = 0
   real :: energy_log_in = 25.
 
+  ! what is being varied in parameter scan for ctp particles
+  ! ctp_scan = 0    :    nothing, no param scan happening for ctp
+  !            1    :    changing nf_ratio
+  !            2    :    changing Te0
+!   integer :: ctp_scan        = 0
+
   ! //////// NAMELIST NUMS ////////
   
   ! enable the trapped particles or not
@@ -53,8 +59,10 @@ module nl
   ! (currently not implemented, please leave to 0)
   integer :: ienable_cop     = 0
   ! enable the counter-passing particles or not
-  ! (currently not implemented, please leave to 0)
+  ! (currently implementing)
   integer :: ienable_ctp     = 0
+  ! For ctp, just calculate fast ion pressure, don't worry about eigenvalues
+  integer :: ictppressure = 0
 
   ! enable the special treatment for trapped/passing boundary or not
   ! THE SPECIAL TREATMENT IS ENFORCED IF TRAPPED PARTICLES ARE ENABLED
@@ -113,6 +121,22 @@ module nl
 
   ! number of Pphi grid points for trapped particles
   integer :: ngtrap_pphi = 50
+
+  ! number of mub0 grid points for counter passing particles
+  integer :: ngctp_mub0 = 10
+  ! mub0 grid starts and ends at (in keV)
+  real :: ctp_mub0start = 50.
+  real :: ctp_mub0end = 1000.
+
+  ! number of normal energy grid points for counter passing particles
+  integer :: ngctp_energyn = 50
+
+  ! number of Pphi grid points for counter passing particles
+  integer :: ngctp_pphi = 50
+
+  ! Pitch angle centre/width for counter passing grid 
+  real :: ctpgrid_lambda0 = 0.5
+  real :: ctpgrid_dlambda = 0.1
 
   ! Pphi grid equidistant in pphi or r 
   integer :: ipphi_eqdistant = 1
@@ -176,6 +200,11 @@ module nl
   ! real    :: dpphi_tpar = 0.5    ! tpar width (bi-Max & Gaussian)
   ! real    :: r_peak = 0.0        ! the peak-r location of the fast ion distribution
 
+  ! real    :: lambda0 = 0.3       ! pitch angle
+  ! real    :: dlambda = 0.2       ! pitch angle width delta_lambda 
+  ! real    :: ctp_norm = 5. * (10. ** (-41.)) ! Normailization factor for slowing down dist function
+  ! real    :: dpsi    = 0.5       ! radial width parameter
+
   ! //////// NAMELIST PICS ///////
   ! namelist for PIC simulation
   ! defined in module pic
@@ -227,14 +256,15 @@ contains
 
     ! what to do in the code
     namelist /RUNS/ imode, neigen, omegain, energy_in, mub0_in, &
-         pphi_in, vsign_in, ienergy_tpbound, energy_log_in
+         pphi_in, vsign_in, ienergy_tpbound, energy_log_in!, ctp_scan
     ! numerical settings
-    namelist /NUMS/ ienable_trap, ienable_cop, ienable_ctp, &
+    namelist /NUMS/ ienable_trap, ienable_cop, ienable_ctp, ictppressure,&
          ienable_tpbound, np_trap, np_cop, np_ctp, norbitintsample, &
          dtorbitn, dtorbitb, erreig, nmaxit
     ! grid settings
     namelist /GRID/ nradial_grid, ngtrap_mub0, trap_mub0start, trap_mub0end,&
-         ngtrap_energyn, ngtrap_energyb, trap_ebend, ngtrap_pphi, ipphi_eqdistant,&
+         ngtrap_energyn, ngtrap_energyb, trap_ebend, ngtrap_pphi, ngctp_mub0,&
+         ctp_mub0start, ctp_mub0end, ngctp_energyn, ngctp_pphi, ctpgrid_lambda0, ctpgrid_dlambda, ipphi_eqdistant,&
          igrid_type, xr1, xr2, sig1, sig2
     ! physics settings
     namelist /PHYS/ af, zf, ai, R0, a, B0
@@ -242,8 +272,8 @@ contains
     namelist /PROF/ te0, ti0, ite_type, iti_type, ini_type, iq_type, &
          tepoly, tipoly, nipoly, qpoly, te_deltar, ti_deltar, ni_deltar
     ! fast particle distribution function
-    namelist /FAST/ nf_ratio, dpphi_nf, dpphi_tper, dpphi_tpar, &
-         tper0, tpar0, Rres, r_peak
+    namelist /FAST/ ifast_pdf_type, nf_ratio, dpphi_nf, dpphi_tper, dpphi_tpar, &
+         tper0, tpar0, Rres, r_peak, lambda0, dlambda, dpsi, ctp_norm
     ! PIC simulation parameters
     namelist /PICS/ nparticles, dt, dt_adjust, ksteps, initampl, initampldt, &
          gamma_d, nsnappart, nsnapfield, nscreen, nfieldoutput, lfieldoutput
@@ -261,7 +291,7 @@ contains
     read(ionamelist, nml = PHYS)
     read(ionamelist, nml = PROF)
     
-    if (imode <= 1 .or. imode == 4) then
+    if (imode <= 2 .or. imode == 4) then
       read(ionamelist, nml = FAST)
     end if
     if (imode == 0) then

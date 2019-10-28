@@ -9,6 +9,7 @@ module eigen
   use matrix_module
   use mhd_matrix
   use trap_matrix
+  use ctp_matrix
   use radial_grid, only : nelement
   use interfaces
   implicit none
@@ -16,6 +17,7 @@ module eigen
   public
 
   type(tmatrix), public :: tm
+  type(ctpmatrix), public :: ctpm
   type(matrix), public :: mat1, mat2
   complex, public :: lambda
   complex, allocatable, dimension(:), public :: v
@@ -53,10 +55,11 @@ contains
     endif
   end subroutine newton_cleanup
 
-  subroutine newton_step()
+  subroutine newton_step(ienable_ctp)
     ! newton iteration
     use paras_num, only : erreig, nmaxit
     implicit none
+    integer, intent(in) :: ienable_ctp
 
     type(matrix) :: mat, matprime, mat1, matprime1
     complex :: lambda1, res1, res2
@@ -101,11 +104,11 @@ contains
           mat = mat1
           matprime = matprime1
        else if (i2 .eq. 1) then
-          call getmat(lambda, mat, matprime)
+          call getmat(lambda, ienable_ctp, mat, matprime)
           mat1 = mat
           matprime1 = matprime
        else
-          call getmat(lambda, mat, matprime)
+          call getmat(lambda, ienable_ctp, mat, matprime)
        end if
 
        !write(*,*) mpi_get_rank(), 'ok'
@@ -173,7 +176,7 @@ contains
 
   end subroutine newton_step
 
-  subroutine getmat(lambdain, mat, matprime)
+  subroutine getmat(lambdain, ienable_ctp, mat, matprime)
     ! get T and T'
     ! INPUT:  lambda
     ! OUTPUT: T(lambda), T'(lambda)
@@ -181,29 +184,48 @@ contains
     implicit none
 
     complex, intent(in) :: lambdain
+    integer, intent(in) :: ienable_ctp
     type(matrix), intent(out) :: mat, matprime
 
-    type(matrix) :: mat3trap, mat3trap1
+    type(matrix) :: mat3trap, mat3trap1, mat3ctp, mat3ctp1
     complex :: omega, omega1, lambda_move
     
     lambda_move = real(dlambdapctg * lambdain)
     omega  = sqrt(lambdain)
     omega1 = sqrt(lambda + lambda_move)
 
-    call getmat3trap(tm, omega , mat3trap )
-    call getmat3trap(tm, omega1, mat3trap1)
+    if (ienable_ctp .eq. 1) then
+      call getmat3ctp(ctpm, omega , mat3ctp )
+      call getmat3ctp(ctpm, omega1, mat3ctp1)
 
-    ! we only do it in master cpu
-    if (mpi_is_master()) then
-       mat = mat2 + mat3trap + (-lambdain) * mat1
-       matprime =  (1./lambda_move) * mat3trap1 + (-1./lambda_move) * mat3trap &
-            + (-1.,0.) * mat1
-    endif
-!!$    mat = mat2 + (-lambdain) * mat1
-!!$    matprime =  (-1.,0.) * mat1
-    
-    call matrix_destroy(mat3trap)
-    call matrix_destroy(mat3trap1)
+      ! we only do it in master cpu
+      if (mpi_is_master()) then
+         mat = mat2 + mat3ctp + (-lambdain) * mat1
+         matprime =  (1./lambda_move) * mat3ctp1 + (-1./lambda_move) * mat3ctp &
+               + (-1.,0.) * mat1
+      endif
+   !!$    mat = mat2 + (-lambdain) * mat1
+   !!$    matprime =  (-1.,0.) * mat1
+      
+      call matrix_destroy(mat3ctp)
+      call matrix_destroy(mat3ctp1)
+    else
+      call getmat3trap(tm, omega , mat3trap )
+      call getmat3trap(tm, omega1, mat3trap1)
+
+      ! we only do it in master cpu
+      if (mpi_is_master()) then
+         mat = mat2 + mat3trap + (-lambdain) * mat1
+         matprime =  (1./lambda_move) * mat3trap1 + (-1./lambda_move) * mat3trap &
+               + (-1.,0.) * mat1
+      endif
+   !!$    mat = mat2 + (-lambdain) * mat1
+   !!$    matprime =  (-1.,0.) * mat1
+      
+      call matrix_destroy(mat3trap)
+      call matrix_destroy(mat3trap1)
+
+   end if
 
   end subroutine getmat
 
