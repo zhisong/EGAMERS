@@ -228,7 +228,7 @@ module profile
       
       tau_e = te0 / ti0 * te(r) / ti(r)
       
-      omg2 = 2. * ti0 * ti(r) / mib / R0**2 * (7./4. * tau_e)
+      omg2 = 2. * ti0 * ti(r) / mib / R0**2 * (7./4. + tau_e)
       omg2 = omg2 * (1. + 2. * (4.*tau_e**2 + 16.*tau_e + 23)&
            / (7. + 4.*tau_e)**2 / q(r)**2)
  
