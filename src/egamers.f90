@@ -16,6 +16,7 @@ program EGAMERS
   use radial_grid
   use trap_matrix
   use trap_grid
+  use continuum
   use eigen
   use pic
   use diagnostics
@@ -140,7 +141,14 @@ program EGAMERS
 
     ! we'd better finish the previous step before iterating frequency
     call mpi_sync()
-     
+
+    ! calculate the continuum first
+    if (mpi_is_master()) write(*,*) 'Computing EGAM continuum frequency'
+    call continuum_init(ngtrap_pphi)
+    call continuum_compute(omegain(1)**2)
+
+    ! calculate the global mode next
+    if (mpi_is_master()) write(*,*) 'Computing EGAM global frequency'
     call newton_init(omegain(1)**2)
     call newton_step()
 
@@ -150,6 +158,8 @@ program EGAMERS
     endif
      
     call newton_cleanup
+
+    call continuum_destroy()
 
     call tmatrix_destroy(tm, .false.)
     call rgrid_destroy()

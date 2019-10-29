@@ -43,9 +43,79 @@ module trap_matrix
   type(workload), public :: lwork
 
   public :: tmatrix_init, tmatrix_calculate, tmatrix_destroy, &
-            tmatrix_bcast, getmat3trap, getint, getintnormal
+            tmatrix_bcast, getmat3trap, getint, getintnormal, &
+            getlocal3trap
 contains
   
+  subroutine getlocal3trap(this, ipphi, r, omega, local3)
+    ! get the value of the kinetic integral in local treatment
+    ! INPUT: radius, index of pphi, frequency
+    ! OUTPUT: local3
+    use profile
+    implicit none
+
+    type(tmatrix), intent(in) :: this
+    complex, intent(in) :: omega
+    integer, intent(in) :: ipphi
+    complex, intent(out) :: local3
+    real, intent(in) :: r
+
+    integer :: i1, i2, m, n, p
+    complex :: tmplocal, tmp
+    real :: dmub0
+
+    local3 = 0.0
+    tmplocal = 0.0
+    tmp = 0.0
+
+    do i1 = 1, this%ngrid
+       ! mub0 level
+
+       ! only do the allocated work
+       if (.not. mpi_is_my_work(lwork, i1)) cycle
+       
+       tmplocal = 0.0
+
+       ! short-hand
+       i2 = ipphi - this%grid(i1)%ipphistart + 1
+       m = 0
+       n = 0
+
+       ! if no particles on the grid, then cycle
+       if (i2 .gt. this%grid(i1)%npphin) cycle
+
+       do p = 1, this%grid(i1)%np
+          if (this%grid(i1)%periodn(i2)%d(1) .eq. 0.) then
+            ! fqc constant for given mub0 and pphi, get int will fail
+            tmplocal= tmplocal &
+                    + getintnormal(this, i1, i2,  omega, p, m, n) &
+                    + getintnormal(this, i1, i2, -omega, p, m, n)
+          else
+            tmplocal= tmplocal &
+                    + getint(this, i1, i2,  omega, p, m, n) &
+                    + getintnormal(this, i1, i2, -omega, p, m, n)
+          end if
+       end do
+
+       ! trapezoidal rule in mub0
+       if (i1 .eq. 1) then
+          dmub0 = 0.5 * (this%mub0_table(2) - this%mub0_table(1))
+       else if (i1 .eq. this%ngrid) then
+          dmub0 = 0.5 * (this%mub0_table(i1) - this%mub0_table(i1-1))
+       else
+          dmub0 = this%mub0_table(i1+1) - this%mub0_table(i1-1)
+       end if
+       tmp = cmplx(0.5*dmub0) * tmplocal + tmp
+    end do
+!write(*,*) 'finished sum'
+    tmp = cmplx(- nf_ratio * a**2 * ei * pi**2 / mi**2 / mib / R0 /B0) * tmp
+    tmp = tmp * ei * B0 / q(r)
+!write(*,*) 'finished sum 2'
+    call mpi_sum_scalar(tmp, tmplocal, 0)
+    local3 = tmplocal
+
+  end subroutine getlocal3trap
+
   subroutine getmat3trap(this, omega, mat3)
     ! get the value of matrix 3 for the given frequency
     ! INPUT:  frequency
@@ -96,18 +166,19 @@ contains
                 tmpmat%data(m, n) = tmpmat%data(n, m)
              end do
           end do
-          
+          ! trapezoidal rule in pphi
           s = this%grid(i1)%s(i2) 
           dpphi = abs(this%grid(i1)%ds * sgridds(s))
           !write(*,*) s, dpphi
           tmpmat2%data(:,:) = tmpmat2%data(:,:)+ cmplx(dpphi) * tmpmat%data(:,:)
        end do
 
+       ! trapezoidal rule in mub0
        if (i1 .eq. 1) then
-          dmub0 = this%mub0_table(2) - this%mub0_table(1)
+          dmub0 = 0.5 * (this%mub0_table(2) - this%mub0_table(1))
           call matrix_clear(mat3)
        else if (i1 .eq. this%ngrid) then
-          dmub0 = this%mub0_table(i1) - this%mub0_table(i1-1)
+          dmub0 = 0.5 * (this%mub0_table(i1) - this%mub0_table(i1-1))
        else
           dmub0 = this%mub0_table(i1+1) - this%mub0_table(i1-1)
        end if

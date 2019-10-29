@@ -533,18 +533,21 @@ contains
   subroutine plotcontinuum()
     ! plot the bulk continuum and omega of the global mode
     ! FORMAT :
-    !           n_global_mode  n_r
+    !           n_global_mode  nr_GAM  nr_EGAM
     !           omg_global_mode_1_re     im
     !           omg_global_mode_2_re     im
     !              .....
     !            r       omg_continuum
     !  (e.g.)   0.1        300000
     !           0.2        290000
-    !           0.3        280000
     !           ...         ...
+    !            r       omg_continuum   gamma
+    !  (e.g.)   0.1        300000         1000
+    !           0.2        290000         1500
 
     use profile, only : omega_gam
     use eigen, only : lambda
+    use continuum
     implicit none
 
     real :: dx, x
@@ -555,7 +558,7 @@ contains
 
     omega = sqrt(lambda)
 
-    write(iofqc,*) neigen, nfieldoutput
+    write(iofqc,*) neigen, nfieldoutput, egam_continuum_nr
     do i1 = 1, neigen
        write(iofqc,*) real(omega), imag(omega)
     end do
@@ -565,7 +568,10 @@ contains
        x = dx * real(i1 - 1)
        write(iofqc,*) x, omega_gam(x)
     end do
-
+    
+    do i1 = 1, egam_continuum_nr
+       write(iofqc,*) egam_continuum_r(i1), real(egam_continuum(i1)), imag(egam_continuum(i1))
+    end do
     close(UNIT=iofqc)
 
   end subroutine plotcontinuum

@@ -4,12 +4,56 @@ module orbit_integral
 
   implicit none
   private
-  public :: orbit_int
+  public :: orbit_int, orbit_int_local
 
 contains
 
+  subroutine orbit_int_local(r, theta, norbit, np, vp0)
+    ! To compute the orbit averaged mode structure vp for local treatment (const Er)
+    ! Inputs : orbitdata(nrobit, r, theat), number of p
+    ! Output : the value of integral (dimension np)
+
+    use paras_num
+    use paras_phy
+    use sintable
+    
+    implicit none
+    integer, intent(in) :: norbit, np
+    real, dimension(norbit), intent(in) :: r, theta
+    real, dimension(np), intent(out) :: vp0
+
+    real, dimension(npmax) :: work
+    real :: dzeta, dr, drdzeta
+    real :: maxr, minr, x0, x1, x2
+    real :: tmpint
+    integer :: maxrpos, minrpos
+    integer :: i1, i2, i3
+    ! clear data
+    vp0 = 0.0
+
+    ! orbit integral
+    do i1 = 1, norbit-1
+       drdzeta = (r(i1+1) - r(i1))
+       do i2 = 1, np
+          tmpint = drdzeta * sinpzeta(i1, i2)
+          vp0(i2) = vp0(i2) + 1.0 * tmpint 
+       end do
+    end do
+    ! last data point
+    i1 = norbit
+    drdzeta = (r(1) - r(i1))
+    do i2 = 1, np
+       tmpint = drdzeta * sinpzeta(i1, i2)
+       vp0(i2) = vp0(i2) + 1.0 * tmpint
+    end do
+
+    vp0 = vp0 / pi
+
+  end subroutine orbit_int_local
+  
   subroutine orbit_int(r, theta, norbit, np, vpm, imin, imax)
-    ! Inputs : orbitdata(norbit, r theta), number of finite element, number of p
+    ! To compute the orbit averaged mode structure vp for finite element m
+    ! Inputs : orbitdata(norbit, r, theta), number of finite element, number of p
     ! Output : the value of the integral (dimension 2*nelement-2, np),
     !          the index of the most inside/outside elements
 

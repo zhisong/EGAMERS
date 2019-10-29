@@ -18,7 +18,7 @@ module trap_grid
 ! tgrid_calcuate  - calcuate orbit period and finite element weight
 !                   build splines, must call before spline data are used
 ! getperiod       - get orbit period and derivative for a given energy and pphi
-! getperoidb      - get orbit period when close to t/p boundary
+! getperiodb      - get orbit period when close to t/p boundary
 ! findperiod      - given a orbit period, find all corresponding energy  
 ! (private)
 ! getperiodb1     - same, without checking if the input parameters are illegal
@@ -45,6 +45,7 @@ module trap_grid
   type, public :: tgrid
 
      ! finite element weight for n grid and for t/p boundary
+     ! the 0th index is reserved for local treatment
      ! indexes : element label, pth resonance, pphi grid
      type(spline), dimension(:,:,:), allocatable, public :: vpmgridn, vpmgridb
      ! the most inside and most outside element indexes for a certain pphi
@@ -396,8 +397,9 @@ contains
        allocate(this%enbswitch(this%npphib))
 
        ! allocate orbit integral spline grid
-       allocate(this%vpmgridn(nele, np, this%npphin))
-       allocate(this%vpmgridb(nele, np, this%npphib))
+       ! 0th element is local treatment
+       allocate(this%vpmgridn(0:nele, np, this%npphin))
+       allocate(this%vpmgridb(0:nele, np, this%npphib))
        ! allocate the array stores most inside/outside element indexes
        allocate(this%ielementmin(this%npphin))
        allocate(this%ielementmax(this%npphin))
@@ -461,22 +463,18 @@ contains
       ! copy the same energy grid to grid of vpm
        do i1 = 1, this%npphin
           do i4 = 1, this%np
-             do i3 = 1, nele
+             do i3 = 0, nele
                 call spline_init(this%vpmgridn(i3,i4,i1), this%periodn(i1)%n)
-                do i2 = 1, this%periodn(i1)%n
-                   this%vpmgridn(i3,i4,i1)%x(i2) = this%periodn(i1)%x(i2)
-                end do
+                this%vpmgridn(i3,i4,i1)%x = this%periodn(i1)%x
              end do
           end do
        end do
 
        do i1 = 1, this%npphib
           do i4 = 1, this%np
-             do i3 = 1, nele
+             do i3 = 0, nele
                 call spline_init(this%vpmgridb(i3,i4,i1), neeb)
-                do i2 = 1, this%periodb(i1)%n
-                   this%vpmgridb(i3,i4,i1)%x(i2) = this%periodb(i1)%x(i2)
-                end do
+                this%vpmgridb(i3,i4,i1)%x = this%periodb(i1)%x
              end do
           end do
        end do
@@ -496,7 +494,7 @@ contains
 
     if (allocated(this%vpmgridn)) then
        ! destroy the spline objects one by one
-       do i1 = 1, nele
+       do i1 = 0, nele
           do i2 = 1, this%np
              do i3 = 1, this%npphin
                 call spline_destroy(this%vpmgridn(i1, i2, i3))
@@ -508,7 +506,7 @@ contains
 
     if (allocated(this%vpmgridb)) then
        ! destroy the spline objects one by one
-       do i1 = 1, nele
+       do i1 = 0, nele
           do i2 = 1, this%np
              do i3 = 1, this%npphib
                 call spline_destroy(this%vpmgridb(i1, i2, i3))
@@ -566,6 +564,7 @@ contains
     real :: lostbound, ee, dtorbit
     real, dimension(norbitintsample) :: r, theta
     real, allocatable, dimension(:, :) :: work
+    real, dimension(npmax) :: work0
 
     
     ! allocate the work space
@@ -583,7 +582,8 @@ contains
                   ,this%mub0/1000./eunit, this%periodn(i1)%x(i2)/1000./eunit, &
                   this%pphigrid(i1) / ei/psi1
              write(*,*) 'orbit status', istat
-          else 
+          else
+             ! first caculate finite element integrals 
              call orbit_int(r, theta, norbitintsample,&
                   this%np, work, imin, imax)
              
@@ -594,6 +594,12 @@ contains
                 do i4 = 1, this%np
                    this%vpmgridn(i3,i4,i1)%y(i2) = work(i3, i4)
                 end do
+             end do
+
+             ! then calculate local approximation integrals
+             call orbit_int_local(r, theta, norbitintsample, this%np, work0)
+             do i4 = 1, this%np
+                this%vpmgridn(0,i4,i1)%y(i2) = work0(i4)
              end do
           end if
        end do
@@ -627,6 +633,7 @@ contains
 this%mub0/eunit, ee/eunit, ipos
              write(*,*) 'orbit status', istat
           else
+             ! first calculate finite element integrals
              call orbit_int(r, theta, norbitintsample, this%np, work, imin, imax)
              ! fresh the most inside/outside indexes
              this%ielementminb(i2, i1) = imin
@@ -635,6 +642,12 @@ this%mub0/eunit, ee/eunit, ipos
                 do i4 = 1, this%np
                    this%vpmgridb(i3,i4,i1)%y(i2) = work(i3,i4)
                 end do
+             end do
+             
+             ! then calculate local approximation integrals
+             call orbit_int_local(r, theta, norbitintsample, this%np, work0)
+             do i4 = 1, this%np
+                this%vpmgridb(0,i4,i1)%y(i2) = work0(i4)
              end do
           end if
        end do
@@ -645,7 +658,7 @@ this%mub0/eunit, ee/eunit, ipos
        call spline_build(this%periodn(i1), 0., 0., 2, 1, this%periodn(i1)%n)
        ! equal-distant grid
        this%periodn(i1)%iequaldistant = .true.
-       do i3 = 1, nele
+       do i3 = 0, nele
           istart = this%periodn(i1)%n
           iend = this%periodn(i1)%n
           call findstartendn(this, i3, i1, istart, iend)
@@ -662,7 +675,7 @@ this%mub0/eunit, ee/eunit, ipos
        ipos = indexb2n(this, i1)
        call spline_build(this%periodb(i1), 0., 0., 2, 1, this%neeb)
        this%periodb(i1)%iequaldistant = .true.
-       do i3 = 1, nele
+       do i3 = 0, nele
           call findstartendb(this, i3, i1, istart, iend)
           do i4 = 1, this%np
              call spline_build(this%vpmgridb(i3,i4,i1), 0., 0., 2, istart, iend)
