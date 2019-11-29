@@ -188,7 +188,7 @@ contains
     
     lambda_move = real(dlambdapctg * lambdain)
     omega  = sqrt(lambdain)
-    omega1 = sqrt(lambda + lambda_move)
+    omega1 = sqrt(lambdain + lambda_move)
 
     call getmat3trap(tm, omega , mat3trap )
     call getmat3trap(tm, omega1, mat3trap1)

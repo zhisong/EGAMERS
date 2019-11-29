@@ -10,6 +10,8 @@ module mhd_matrix
 
   ! get the matrix for MHD part
   public :: getmat1, getmat2
+  ! get the MHD response for local approximation
+  public :: getlocal1, getlocal2
   
 contains
 
@@ -40,6 +42,30 @@ contains
   end function intcore2
 
 !  ///////////////////////////////
+
+  subroutine getlocal1(r, local1)
+    ! get local contribution from MHD, part1
+    ! INPUT : r, radius
+    ! RETURNS : the value of local contribution, wrap up of intcore1
+    use paras_phy, only : a
+    implicit none
+    real, intent(in) :: r
+    complex, intent(out) :: local1
+
+    local1 = cmplx(intcore1(r) / a**2 / r)
+  end subroutine getlocal1
+
+  subroutine getlocal2(r, local2)
+    ! get local contribution from MHD, part2, wrap up of intcore2
+    ! INPUT : r, radius
+    ! RETURNS : the value of local contribution
+    use paras_phy, only : a
+    implicit none
+    real, intent(in) :: r
+    complex, intent(out) :: local2
+
+    local2 = cmplx(intcore2(r) / a**2 / r)
+  end subroutine getlocal2
 
   subroutine getmhdint1(ipos, nstep, m)
     ! calculate the integral S Hm(r) Hn(r) * intcore1(r) dr

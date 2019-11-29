@@ -46,7 +46,8 @@ module mpi
 
   interface mpi_sum_scalar
      module procedure &
-          mpi_sum_scalar_integer
+          mpi_sum_scalar_integer, &
+          mpi_sum_scalar_complex
   end interface mpi_sum_scalar
 
   interface mpi_sum_array
@@ -290,7 +291,6 @@ contains
 
   subroutine mpi_sum_scalar_integer(vec_in, vec_out, root)
 
-    use matrix_module
     implicit none
    
     integer, intent(inout) :: vec_in, vec_out
@@ -305,6 +305,23 @@ contains
     vec_out = vec_in
 #endif
   end subroutine mpi_sum_scalar_integer
+
+  subroutine mpi_sum_scalar_complex(vec_in, vec_out, root)
+
+    implicit none
+   
+    complex, intent(inout) :: vec_in, vec_out
+    integer, intent(in) :: root
+    integer :: nelement, ierr
+
+#ifdef MPI
+    call MPI_reduce(vec_in, vec_out, 1, MPI_COMPLEX_TYPE, &
+         MPI_SUM, root, MPI_COMM_WORLD, ierr)
+    if (ierr>0 .and. mpi_is_master()) write(*,*) 'MPI_reduce failed'
+#else
+    vec_out = vec_in
+#endif
+  end subroutine mpi_sum_scalar_complex
 
   ! summation over matrix
   subroutine mpi_sum_matrix(mat_in, mat_out, root)
