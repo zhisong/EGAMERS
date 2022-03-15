@@ -32,8 +32,9 @@
 # !! NOTE: NETCDF/binary will only be used for PIC output, other modes will output text files
 
 COMPILER = gfortran
-MKL = no
+MKL = yes
 MPI = yes
+DEBUG = no
 NETCDF = serial
 # The path to NETCDF, please adjust
 NETCDF_INCLUDE = /usr/include/
@@ -54,13 +55,24 @@ OBJS =  paras_phy.o paras_num.o interfaces.o matrix_module.o sgtsl.o cubic.o spl
         diagnostics.o nl.o io.o egamers.o
 
 ifeq ($(COMPILER), ifort)
-  FC = mpiifort
-  FFLAGS = -r8 -O2 -cpp
+  FC = mpif90
+  FFLAGS = -r8 -cpp
+  ifeq ($(DEBUG), yes)
+    FFLAGS += -O0 -g
+  else
+    FFLAGS += -O2
+  endif
 endif
 
 ifeq ($(COMPILER), gfortran)
   FC = mpif90
-  FFLAGS = -fdefault-real-8 -O3 -cpp
+  FFLAGS = -fdefault-real-8 -cpp
+  ifeq ($(DEBUG), yes)
+    FFLAGS += -O0 -g
+  else
+    FFLAGS += -O3
+  endif
+
 endif
 
 ifeq ($(MKL), yes)

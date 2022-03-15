@@ -560,7 +560,7 @@ contains
           if (i1 .eq. 1) then
              dee = (this%grid(imub0)%periodb(ipphib)%x(2) - &
                   this%grid(imub0)%periodb(ipphib)%x(1)) * 0.5
-          else if (i1 .eq. iup) then
+          else if (i1 .eq. this%grid(imub0)%neeb) then
              dee = (this%grid(imub0)%periodb(ipphib)%x(i1) - &
                   this%grid(imub0)%periodb(ipphib)%x(i1-1)) * 0.5
           else
