@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 
 class EGAMERS:
 
+    from .ncfield import read_ncfield, compute_ncfield, plot_field_radial, plot_field_time, plot_spectrogram
+
     class OutputData:
         pass
 
@@ -11,6 +13,10 @@ class EGAMERS:
         """
         import os
         abspath = os.path.abspath(folder_path)
+
+        ncfield_name = os.path.join(abspath, 'snapshot.field.nc')
+        if os.path.exists(ncfield_name):
+            self.ncfield = self.read_ncfield(ncfield_name)
 
         fqc_name = os.path.join(abspath, 'fqc.out')
         if os.path.exists(fqc_name):
